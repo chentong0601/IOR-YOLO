@@ -1,0 +1,93 @@
+[
+  {
+    "skill": "research-systematic-literature-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-systematic-literature-review/SKILL.md",
+    "sha256": "c2cc9095ff25d8ffa76aba402521d7f971d7ed1d6a2525711b7c230d19870f6b"
+  },
+  {
+    "skill": "research-systematic-literature-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-systematic-literature-review/SOURCE.md",
+    "sha256": "f6c708c85e8d2962b0443aa851c1db7c9e7bcbe105baec9c62512c77f86503db"
+  },
+  {
+    "skill": "research-paper-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-paper-review/SKILL.md",
+    "sha256": "d3eca6f872a459f204a2cdf8dee687dba26dd3a2e01c49ba2965fe2da48f7cc8"
+  },
+  {
+    "skill": "research-paper-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-paper-review/SOURCE.md",
+    "sha256": "3fa046abbf1292f90128d6e27706c6f1d1de54e610be33a959562a4d28ef84f4"
+  },
+  {
+    "skill": "research-novelty-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-novelty-review/SKILL.md",
+    "sha256": "81332766bf8864e67680c8423cc481c538ac36dc2063b6304cb92213fea29ddc"
+  },
+  {
+    "skill": "research-novelty-review",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/research-novelty-review/SOURCE.md",
+    "sha256": "6d0264f70378e89c4822f543baa6e2a6155fb562da19e7d23ab2ac35f2e15f48"
+  },
+  {
+    "skill": "experiment-design",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/experiment-design/LICENSE",
+    "sha256": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685"
+  },
+  {
+    "skill": "experiment-design",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/experiment-design/SKILL.md",
+    "sha256": "09abc45e3e3013a98e0d9bc206173102f5fc6c26053877f0e2b60e931dc82564"
+  },
+  {
+    "skill": "experiment-design",
+    "scope": "user",
+    "version": "1.0.0",
+    "path": "~/.agents/skills/experiment-design/SOURCE.md",
+    "sha256": "86d061a267ba3191857a89de00ec27bcc2ce46f4acf25765b9f91dfb763ce126"
+  },
+  {
+    "skill": "apple-research-workflow",
+    "scope": "project",
+    "version": "1.0.0",
+    "path": ".agents/skills/apple-research-workflow/SKILL.md",
+    "sha256": "23093c3f7368a239bf1cd2ff5692ac41f1f77c6663a6ea9114f003948722bf43"
+  },
+  {
+    "skill": "apple-dataset-audit",
+    "scope": "project",
+    "version": "1.0.0",
+    "path": ".agents/skills/apple-dataset-audit/SKILL.md",
+    "sha256": "8aa298fd0adb01b0f19f697c524b936fb8ff23d06180e489be5afd7d1883f137"
+  },
+  {
+    "skill": "apple-model-experiment",
+    "scope": "project",
+    "version": "1.0.0",
+    "path": ".agents/skills/apple-model-experiment/SKILL.md",
+    "sha256": "a73efb89a7e73bc4c80c8de8d250573dd4f182ca0985c6a76cff9774f3809b84"
+  },
+  {
+    "skill": "cv-reproduction-audit",
+    "scope": "project",
+    "version": "1.0.0",
+    "path": ".agents/skills/cv-reproduction-audit/SKILL.md",
+    "sha256": "1ca5ca46e74f6a21a460760f1c44ef73cf15622495ff31f2b6f70bd2f281fd5e"
+  }
+]

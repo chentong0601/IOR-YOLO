@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-18",
+  "requested_roots": {
+    "~/.agents/skills": "absent",
+    "<repo>/.agents/skills": "absent"
+  },
+  "sha256": {
+    "/Users/chentong/.codex/skills/.system/imagegen/SKILL.md": "681ddb4ad6d06a2acc78a3535b583f8d0c1ea800ecda3d56370d3310fd2cd4ba",
+    "/Users/chentong/.codex/skills/.system/openai-docs/SKILL.md": "aa6829e21df2223167c85d2e49b6337a7345c84c1033f1ec10182c7882b36d45",
+    "/Users/chentong/.codex/skills/.system/plugin-creator/SKILL.md": "71b95b8219644f95d633721e7f7cd3c469edfc8fe50f8415d400dfb2d74bc7b9",
+    "/Users/chentong/.codex/skills/.system/review-agent/SKILL.md": "07079efd0dc76f05fade424e5dfb048dce1de2df7626e1a4f56292a4f3f92228",
+    "/Users/chentong/.codex/skills/.system/skill-creator/SKILL.md": "6656e54755638e8efcf275a472b9672eaa8a9a1b9e59dc210e275b03b59e1e66",
+    "/Users/chentong/.codex/skills/.system/skill-installer/SKILL.md": "d68b77e5bbb34dedab89d134da52855f140fc4b4299b80104f534e3b9e98f8ee",
+    "/Users/chentong/.codex/skills/pdf/SKILL.md": "d108cf2b36355ab37eb5962933f4d09785ec002f3105c506129320209306b9d2",
+    "/Users/chentong/.codex/skills/research-writing-skill/SKILL.md": "ce5f25f99ebb01e6d12624dbee1967226ed5b59aa914496bf7b998e9a31a6630",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/SKILL.md": "f3806f059a102446776fe8e15a492fed76af0483a4336e4d034e239e4243abb3",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/astropy/SKILL.md": "7c6080420bb09c36eb7bc6be76e781e7c41082dcb3b1639b0afd320f3ea7d4cc",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/citation-management/SKILL.md": "9813e12cdf0268896db1e51590a448617285de5792809f79263eaf8f9aa53190",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/exploratory-data-analysis/SKILL.md": "8084fae57c4c3fac0db237113ffb40a98046ef8fb163b9e3119f0c29faf9178c",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/literature-review/SKILL.md": "85b353da774bd218191844fbae89cf2744f12f239007049cd5cad89f20865106",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/matlab/SKILL.md": "afb48dc3def58796e79af2567d4dd3c6734b8abcc26a13b9c7a36e2f3bbbe9e3",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/matplotlib/SKILL.md": "20aaffc4ca735b55e240d8300631714fbcc93ffd9096b7c93a41fc5905379d5d",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/networkx/SKILL.md": "9c2b0d94e4a0176c7386a6a294d5ac8a7b49489c395559899d17a520e72ddfe9",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/paper-lookup/SKILL.md": "cebc391c9aac4c6c62208bd8e93828abf98f33ca62554bc8416f1b1d7502ff11",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/pdf/SKILL.md": "e898e63025654789e1bff0025d391acbecfc7a5524e65db613a9cd375a3f5d26",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/pymatgen/SKILL.md": "4f3a96dc5a5dd87ababec7375f42effc9c2a9970123a02e1d653e26ac7f49ee9",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/pymoo/SKILL.md": "a6aa4ebd285ed0a8a73c362ced75ea4173bb267695f21460cf566b774fd38d74",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/qutip/SKILL.md": "a5f93b9b587b9cceb6ee78bdc07e3ec60b4ba413da6f97ac79c538bd57feb9e9",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/scientific-visualization/SKILL.md": "05258e061f758120e6318110ac8d108eadd7e583a0f8d0f5c48899efab592666",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/scikit-learn/SKILL.md": "87985a80806e0525383654608d8ee19270565c64a8ae50e168d7b8d158136dcc",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/seaborn/SKILL.md": "50998dc128c10a8cfccb1f33fcbc410ab99409e3736af2c0f7dcb9e40088c4e7",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/simpy/SKILL.md": "149c85e6c02d45942886369cb3e21bc06b474a2f644b9e11f4bb34e5ee5df70b",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/statistical-analysis/SKILL.md": "225a05f10712ca7c8bf5a5de2967565bf80ec8c1555b76da5bffbaf56af8824c",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/statsmodels/SKILL.md": "ffbb636397cfe1cbb585112746ad0d4f125bc3883bd899b8de0ea28eea2baaf4",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/sympy/SKILL.md": "03907fddaf11029572c8605ff048a34d99819dd2dfa4a3053824d654dc058777",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/timesfm-forecasting/SKILL.md": "179145a6824b5e76d5975c3e91d80fb1f54adb76866c6d75381cd85cab9929c3",
+    "/Users/chentong/.codex/skills/scientific-toolkit-skill/references/scientific-skills/xlsx/SKILL.md": "dd316db7785a6be12966c2a2d848931fbf5f518b3cdb0a66fa62ee835ead1cfc",
+    "/Users/chentong/Documents/New project/苹果成熟度检测论文/IOR-YOLO_项目工程说明书.md": "19294890bb83611553018086bf34bfb328ecb48f3cc988c2ccff73287a6e9ccf"
+  }
+}

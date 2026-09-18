@@ -1,0 +1,183 @@
+{
+  "review_type": "bounded evidence map",
+  "date": "2026-09-18",
+  "source": "web search; publisher and author follow-up",
+  "queries": [
+    {
+      "q": "apple maturity detection orchard deep learning YOLO dataset 2025 2026",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "apple ripeness detection maturity ground truth soluble solids firmness deep learning orchard 2021 2024",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "fruit maturity ordinal regression ordinal classification deep learning",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "fruit maturity illumination robustness color constancy photometric augmentation",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "apple ripeness maturity detection \"Fuji\" \"Zhu\" deep learning dataset",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "apple maturity detection 2021 2022 2023 YOLO color dataset",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"fruit\" \"ordinal\" \"maturity\" classification loss",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "apple fruit illumination robustness gamma augmentation corruption benchmark",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS and ECA2\" strawberry maturity",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"DDCA-Net\" \"Ordinal\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"apple\" \"maturity\" \"ordinal\" -site:reddit.com",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "fruit maturity \"corruption\" robustness benchmark",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS and ECA2\" site:nature.com",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"DDCA-Net\" cashew DOI",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"apple maturity\" \"2021\" deep learning",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"apple maturity\" \"2023\" classification EfficientNet MobileNet",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS\" \"ECA2\" DOI nature strawberry",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"apple maturity quantification\" coloration deep learning",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"fruit maturity\" \"photometric\" augmentation",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"fruit detection\" \"corruptions\" orchard",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"ATSS Deep Learning-Based Approach to Detect Apple Fruits\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Apple Ripeness Identification Using Deep Learning\" Xiao",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Attention-Based Fine-Grained\" Fuji 228",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS and ECA2 enhanced\" nature doi",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS and ECA2\" \"10.\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"DDCA-Net\" \"10.1109\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"self-supervised\" \"occluded apple ripeness\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"apple maturity quantification\" \"coloration\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "site:mdpi.com/2311-7524/11/9/1068 \"BGWL\" \"maturity\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "site:mdpi.com/2077-0472/13/2/228 \"dataset\" \"maturity\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"fruit maturity\" \"gamma\" augmentation",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"FruitProM-V2\" github",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"BGWL-YOLO\" \"1068\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Attention-Based Fine-Grained Lightweight Architecture\" \"Fuji\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "banana ripeness Chuquimarca 2025 gamma illumination",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"HRLN-YOLO\" github",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"A multi-stage, pixel-level annotated apple dataset\" Mendeley",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"ATSS Deep Learning-Based Approach\" corruption mdpi",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Oil Palm Fruit Maturity\" \"LAB\" \"CORAL\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"GhostGS and ECA2\" strawberry nature",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"BGWL-YOLO\" BiFPN GhostConv WIoU",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Attention-Based Fine-Grained Lightweight\" \"10.3390\"",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"Oil Palm Fruit Maturity Classification Algorithm\" github code",
+      "date": "2026-09-18"
+    },
+    {
+      "q": "\"A novel self-supervised method for in-field occluded apple ripeness determination\" github",
+      "date": "2026-09-18"
+    }
+  ]
+}

@@ -1,0 +1,219 @@
+{
+  "figshare": {
+    "title": "Orchard apple maturity dataset",
+    "doi": "10.6084/m9.figshare.29533841.v1",
+    "published_date": "2025-07-10T15:38:39Z",
+    "license": {
+      "value": 1,
+      "name": "CC BY 4.0",
+      "url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    "description": "<p dir=\"ltr\">The Orchard Apple Maturity Dataset is a collection of images taken in real orchards to help train computer vision models for smart agriculture. It features four distinct classes based on the fruit's development stage: Young apple, Pre-growth apple, Ripe apple, and Late-growth apple, all captured under realistic conditions with varied lighting and backgrounds. This dataset is ideal for tasks like automated harvesting, yield prediction, and object detection by classifying the ripeness of apples directly on the tree.</p>",
+    "checked_on": "2026-09-18",
+    "source": "https://api.figshare.com/v2/articles/29533841",
+    "data_downloaded": false
+  },
+  "repositories": [
+    {
+      "repo": "zhukeyi-stan/Fuji_Ripeness_And_Size_Estimation",
+      "url": "https://github.com/zhukeyi-stan/Fuji_Ripeness_And_Size_Estimation",
+      "license": null,
+      "archived": false,
+      "files": [
+        ".gitignore",
+        "Inference_Results.jpg",
+        "README.md",
+        "inference.py",
+        "utils"
+      ]
+    },
+    {
+      "repo": "fraunhoferhhi/AppleGrowthVision",
+      "url": "https://github.com/fraunhoferhhi/AppleGrowthVision",
+      "license": null,
+      "archived": false,
+      "files": [
+        ".github",
+        "README.md",
+        "calib_conversion.py",
+        "prepare_bbch.py",
+        "project-page"
+      ]
+    },
+    {
+      "repo": "fu3lab/Scifresh-apple-RGB-images-with-multi-class-label",
+      "url": "https://github.com/Smart-Ag/Scifresh-apple-RGB-images-with-multi-class-label",
+      "license": null,
+      "archived": false,
+      "files": [
+        "README.md",
+        "image_blur_-15",
+        "image_blur_-20",
+        "image_blur_15",
+        "image_blur_20",
+        "image_bri_0.7",
+        "image_bri_0.8",
+        "image_bri_0.9",
+        "image_bri_1.1",
+        "image_bri_1.2",
+        "image_his",
+        "image_mirror_h",
+        "image_mirror_v",
+        "image_ro_180",
+        "image_ro_270",
+        "image_ro_90",
+        "original_image"
+      ]
+    },
+    {
+      "repo": "EIS-Ressearch-Lab/Apple_maturity_hyperspectral_imaging",
+      "url": "https://github.com/EIS-Ressearch-Lab/Apple_maturity_hyperspectral_imaging",
+      "license": {
+        "key": "gpl-3.0",
+        "name": "GNU General Public License v3.0",
+        "spdx_id": "GPL-3.0",
+        "url": "https://api.github.com/licenses/gpl-3.0",
+        "node_id": "MDc6TGljZW5zZTk="
+      },
+      "archived": false,
+      "files": [
+        "LICENSE",
+        "Python_code_Feb_2025_Aggregated_images",
+        "README.md",
+        "data_NZ2023.csv",
+        "data_NZ2024.csv",
+        "data_UK2024.csv"
+      ]
+    },
+    {
+      "repo": "ultralytics/ultralytics",
+      "url": "https://github.com/ultralytics/ultralytics",
+      "license": {
+        "key": "agpl-3.0",
+        "name": "GNU Affero General Public License v3.0",
+        "spdx_id": "AGPL-3.0",
+        "url": "https://api.github.com/licenses/agpl-3.0",
+        "node_id": "MDc6TGljZW5zZTE="
+      },
+      "archived": false,
+      "files": [
+        ".dockerignore",
+        ".github",
+        ".gitignore",
+        "AGENTS.md",
+        "CITATION.cff",
+        "CLAUDE.md",
+        "CONTRIBUTING.md",
+        "LICENSE",
+        "README.md",
+        "README.zh-CN.md",
+        "docker",
+        "docs",
+        "examples",
+        "mkdocs.yml",
+        "pyproject.toml",
+        "tests",
+        "ultralytics"
+      ]
+    },
+    {
+      "repo": "pytorch/vision",
+      "url": "https://github.com/pytorch/vision",
+      "license": {
+        "key": "bsd-3-clause",
+        "name": "BSD 3-Clause \"New\" or \"Revised\" License",
+        "spdx_id": "BSD-3-Clause",
+        "url": "https://api.github.com/licenses/bsd-3-clause",
+        "node_id": "MDc6TGljZW5zZTU="
+      },
+      "archived": false,
+      "files": [
+        ".clang-format",
+        ".git-blame-ignore-revs",
+        ".gitattributes",
+        ".github",
+        ".gitignore",
+        ".pre-commit-config.yaml",
+        "CITATION.cff",
+        "CMakeLists.txt",
+        "CODE_OF_CONDUCT.md",
+        "CONTRIBUTING.md",
+        "CONTRIBUTING_MODELS.md",
+        "LICENSE",
+        "MANIFEST.in",
+        "README.md",
+        "benchmarks",
+        "cmake",
+        "docs",
+        "examples",
+        "gallery",
+        "hubconf.py",
+        "maintainer_guide.md",
+        "mypy.ini",
+        "packaging",
+        "pyproject.toml",
+        "pytest.ini",
+        "references",
+        "release",
+        "scripts",
+        "setup.cfg",
+        "setup.py",
+        "test",
+        "torchvision",
+        "version.txt"
+      ]
+    },
+    {
+      "repo": "lyuwenyu/RT-DETR",
+      "url": "https://github.com/lyuwenyu/RT-DETR",
+      "license": {
+        "key": "apache-2.0",
+        "name": "Apache License 2.0",
+        "spdx_id": "Apache-2.0",
+        "url": "https://api.github.com/licenses/apache-2.0",
+        "node_id": "MDc6TGljZW5zZTI="
+      },
+      "archived": false,
+      "files": [
+        ".github",
+        ".gitignore",
+        "LICENSE",
+        "README.md",
+        "README_cn.md",
+        "benchmark",
+        "hubconf.py",
+        "rtdetr_paddle",
+        "rtdetr_pytorch",
+        "rtdetrv2_paddle",
+        "rtdetrv2_pytorch"
+      ]
+    },
+    {
+      "repo": "Raschka-research-group/coral-pytorch",
+      "url": "https://github.com/Raschka-research-group/coral-pytorch",
+      "license": {
+        "key": "mit",
+        "name": "MIT License",
+        "spdx_id": "MIT",
+        "url": "https://api.github.com/licenses/mit",
+        "node_id": "MDc6TGljZW5zZTEz"
+      },
+      "archived": false,
+      "files": [
+        ".github",
+        ".gitignore",
+        "LICENSE.txt",
+        "README.md",
+        "coral_pytorch",
+        "docs",
+        "environment.yml",
+        "mkdocs.yml",
+        "pytest.ini",
+        "requirements-docs.txt",
+        "requirements.txt",
+        "setup.cfg",
+        "setup.py"
+      ]
+    }
+  ]
+}

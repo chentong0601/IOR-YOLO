@@ -1,0 +1,86 @@
+# Operating-system and editor artifacts
+.DS_Store
+._*
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Python environments, caches, build products, and coverage
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Secrets and local credentials. Sanitized examples remain trackable.
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+secrets.json
+token.json
+
+# Raw and large derived datasets. Keep manifests and split definitions in Git.
+/IOR-YOLO/data/raw/**
+/IOR-YOLO/data/interim/**
+/IOR-YOLO/data/processed/**
+/data/raw/**
+/data/interim/**
+/data/processed/**
+/datasets/**
+/downloads/**
+
+# Model weights and exported runtime artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.weights
+*.onnx
+*.engine
+*.tflite
+*.pb
+
+# Large training, tracking, and temporary prediction outputs
+/IOR-YOLO/runs/**
+!/IOR-YOLO/runs/**/
+!/IOR-YOLO/runs/**/.gitkeep
+/runs/**
+/wandb/
+/mlruns/
+/lightning_logs/
+/tensorboard/
+/IOR-YOLO/reports/predictions/**
+/IOR-YOLO/reports/failure_cases/**
+/predictions/**
+/outputs/**
+
+# Locally collected literature PDFs without confirmed redistribution rights
+/docs/literature/papers/**/*.pdf
+/papers/**/*.pdf
+
+# Small manifests, split files, configs, source, tests, and research records
+# remain trackable by design.
