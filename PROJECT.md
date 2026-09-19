@@ -1,6 +1,6 @@
 # Project State
 
-更新：2026-09-18。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
+更新：2026-09-19。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
 
 ## Project Goal
 
@@ -8,11 +8,11 @@
 
 ## Current Stage
 
-**Stage 1 — Research Question & Literature Landscape**。
+**Stage 2 — Dataset Acquisition & Audit**。
 
-本次bounded调研产物验收：**Stage 1 = PASSED**。推荐下一阶段为Stage 2 — Dataset Acquisition & Audit，**尚未进入**，等待用户下一步指示。
+Stage 1已通过；本轮完成的 **Dataset Feasibility Gate = PASSED**。仅完成数据选择前的来源、许可、标签语义、泄漏和外部评价可行性核查；尚未下载数据或完成包级审计，不能将完整Stage 2视为完成。
 
-项目起点为科研工程空白：目录与Research Skill System已经建立；本轮新增文献/状态资产，但尚无数据本地审计、Baseline实现、正式训练或实验结果。目录及预留E00–E10不代表完成任何实验。
+项目起点为科研工程空白：目录与Research Skill System已经建立；本轮新增数据可行性与状态资产，但尚无数据本地审计、Baseline实现、正式训练或实验结果。目录及预留E00–E10不代表完成任何实验。
 
 ## Research Question
 
@@ -28,8 +28,8 @@
 
 | 候选 | 必须保留的状态 | 本轮评估 | 待验证/停止条件 |
 |---|---|---|---|
-| Ordinal | **Hypothesis only** | **Modify** | 标签确有顺序且多于二级、错误足够后再检验；顺序不可靠则暂停 |
-| CPIP | **Hypothesis only** | **Modify** | 优于常规增强且不改变标签语义；仅同族合成扰动收益不足以支持真实泛化 |
+| Ordinal | **Hypothesis only** | **Modify；数据支持Moderate** | 仅D2具备明确三阶段颜色顺序；先审计一致性与基线错误，D3不能外验严重跨级错误 |
+| CPIP | **Hypothesis only** | **Modify；数据支持Moderate** | D2/D3有真实光照变化但无逐图光照属性；只允许语义保持扰动，不把跨域差异全部归因于光照 |
 | IOR-YOLO | **Working concept only** | **Keep as working title** | 不绑定最终YOLO版本、模块或论文题目 |
 
 Modify是助手基于文献的评估，不是已经实现或验证的新模型。
@@ -42,7 +42,7 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Dataset Status
 
-**Not Frozen**。未下载数据。优先候选：D1 Orchard apple maturity、D2 Multi-Stage Pixel-Level Apple v4、D3 Fuji Ripeness & Size。各有标签顺序、增强副本/计数、二分类语义/许可等审计项，见 [数据候选](docs/literature/dataset-candidates.md)。没有已确认的跨数据集类别映射。
+**Not Frozen**。未下载数据。Dataset Feasibility Gate建议D2 Multi-Stage Pixel-Level Apple v4作为Primary Dataset Candidate，D3 Fuji Ripeness & Size作为条件性External Dataset Candidate，D1 Orchard apple maturity降为Secondary。D2成熟标签是专家复核的果皮颜色阶段而非生理真值；D3为日期辅助的红/绿视觉二分；D1依据仍不清楚。详见 [Dataset Feasibility Gate](docs/dataset-feasibility.md)。
 
 ## Baseline Status
 
@@ -55,28 +55,29 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 ## Current Evidence
 
 - 文献证据：颜色代理与生理测量任务不同；水果序数/概率成熟、苹果连续成熟与光照处理均已有先例。
-- 数据元信息：D1有CC BY 4.0公开入口；D2同样有明确数据许可，但论文/仓库存在计数差异；D3需补许可及采集分组。
+- 数据元信息：D1、D2均有CC BY 4.0公开入口；D2采集、视觉标注协议和结构证据最完整，但有派生图泄漏高风险；D3 Kaggle列GPL 3且约62.36 GB，作者论文确认多视角/重叠采集，原来源许可链与分组仍需包级确认。
 - 代码证据：静态核验了官方通用框架及部分作者数据/推理仓库；存在链接不等于完整训练可复现。
 - **本项目实验证据：无。** 所有外部论文数字均为其作者报告，未在本项目复现。
 
 ## Open Questions
 
-1. 最终采用视觉着色还是生长阶段定义？D1顺序能否被原始标注协议证明？
-2. 哪个数据集能获得可靠原图族、采集单位及独立划分？三类/四类任务是否可持续？
+1. D2包内能否完整恢复1124个原图族、所有增强/双分辨率派生关系与标签计数？
+2. 缺少树、果实或session ID时，保守source-family split能否把近重复风险降到可接受范围？
 3. 基线主要失败来自定位、标签歧义、跨级判断还是光照？
 4. 天然光照分组与外部标签兼容性是否足以支撑泛化主张？
-5. 剩余closest work全文、作者代码和许可能否补齐？
+5. D3原始两来源的再利用许可与Kaggle打包许可是否一致，能否恢复fruit/tree/date/sequence分组？
 
 ## Risks
 
-颜色被当作生理真值；原图与增强/多视角泄漏；日期/品种与标签混杂；视觉阶段边界不确定；论文版本与数据计数不一致；现有prior art缩小方法空间；以同族扰动替代真实泛化；受限访问造成文献覆盖偏差。详见 [Gap Map](docs/research-gap-map.md)。
+颜色被当作生理真值；D2离线增强与双分辨率派生图泄漏；D3同果多日多视角和SfM重叠泄漏；日期/地点/设备与标签混杂；视觉阶段边界不确定；D2实例计数相差1；把二类外部集强行映射到三类；以合成扰动替代真实光照泛化。详见 [Dataset Feasibility Gate](docs/dataset-feasibility.md)。
 
 ## Decisions
 
 - 用户已确认：进入Stage 1、暂不采集、使用公开数据；停止Skill系统优化；本轮不下载、训练或实现候选模块。
 - 已执行：AGENTS Git/工作树策略最小更新；Stage 1研究资产与记录建立。
 - 助手建议：工作任务定义、候选清单、Ordinal/CPIP Modify、IOR保留工作名称；不标为用户已冻结研究路线。
-- 验收判断：10项Stage 1产物条件已满足；Stage 2只推荐、未开始。
+- Stage 1验收时的判断：10项产物条件已满足；当时Stage 2只推荐、未开始。
+- 用户已确认进入Stage 2；本轮Dataset Feasibility Gate已通过。D2/D3/D1的角色是证据驱动建议，Dataset仍Not Frozen，需下载后的包级审计才能确认。
 
 ## Rejected Ideas
 
@@ -84,4 +85,4 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Next Actions
 
-等待用户对Stage 1建议的反馈与下一阶段指示。若授权Stage 2，先获取/核验许可和原始标签，再审计原图族、近重复及分组可行性，形成数据选择依据；补读最终选入closest work全文。此前不开始下载、训练、模型设计或永久工作树建设，也不继续优化Skill系统。
+本轮到此停止，不自行下载。下一次若获授权，先固定并下载D2 v4，记录版本、清单、大小和校验和，只做包级结构、标签、重复与split审计；D3在补齐原来源许可链及分组计划后再决定是否下载。D1仅作次级包审计。不开始训练、模型设计、Baseline冻结或工作树建设。
