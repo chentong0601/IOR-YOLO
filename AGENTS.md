@@ -18,6 +18,14 @@
 
 项目文件是跨会话衔接依据，不承诺脱离这些文件的永久记忆。
 
+### Worktree 使用原则
+
+默认在当前 `main` 本地工作区顺序推进。保留上文约束：Baseline 冻结前原则上不建永久 Worktree；冻结后仅在相互独立且并行的代码开发任务确实存在时建永久 Worktree。
+
+仅在确有两个以上独立代码方案并行、实验性实现可能大幅改动稳定代码、长期 Agent 任务需要隔离，或 Baseline 冻结后探索独立方法分支时，才建议创建。文献调研、数据审计、普通文档修改、随机种子/超参数实验、一次性 Bug 修复和同一任务的连续步骤，不创建 Worktree。
+
+创建前须说明必要性、base branch/commit、唯一任务，以及完成后预计 merge、cherry-pick、handoff 或 discard；**未经用户确认不主动创建**。一个 Worktree 对应一个清晰、独立的代码开发任务。
+
 
 ## Research Skill Routing
 

@@ -10,7 +10,7 @@
 
 **Stage 2 — Dataset Acquisition & Audit**。
 
-Stage 1已通过；本轮完成的 **Dataset Feasibility Gate = PASSED**。仅完成数据选择前的来源、许可、标签语义、泄漏和外部评价可行性核查；尚未下载数据或完成包级审计，不能将完整Stage 2视为完成。
+Stage 1与Stage 2A Dataset Feasibility Gate已通过。当前进入 **Stage 2B-1 — Controlled Acquisition & Raw Dataset Audit 的下载前准备**。尚未下载数据或完成包级审计，不能将完整Stage 2视为完成。
 
 项目起点为科研工程空白：目录与Research Skill System已经建立；本轮新增数据可行性与状态资产，但尚无数据本地审计、Baseline实现、正式训练或实验结果。目录及预留E00–E10不代表完成任何实验。
 
@@ -42,7 +42,7 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Dataset Status
 
-**Not Frozen**。未下载数据。Dataset Feasibility Gate建议D2 Multi-Stage Pixel-Level Apple v4作为Primary Dataset Candidate，D3 Fuji Ripeness & Size作为条件性External Dataset Candidate，D1 Orchard apple maturity降为Secondary。D2成熟标签是专家复核的果皮颜色阶段而非生理真值；D3为日期辅助的红/绿视觉二分；D1依据仍不清楚。详见 [Dataset Feasibility Gate](docs/dataset-feasibility.md)。
+**Not Frozen**。未下载数据。Dataset Feasibility Gate建议D2 Multi-Stage Pixel-Level Apple v4作为Primary Dataset Candidate，D3 Fuji Ripeness & Size作为条件性External Dataset Candidate，D1 Orchard apple maturity降为Secondary。D2成熟标签是专家复核的果皮颜色阶段而非生理真值；D3为日期辅助的红/绿视觉二分；D1依据仍不清楚。Stage 2B-1已建立[受控获取记录](docs/data-acquisition-d2.md)及只读审计脚本；官方文件名/压缩包大小仍Unverified，raw包SHA256未产生。
 
 ## Baseline Status
 
@@ -85,4 +85,4 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Next Actions
 
-本轮到此停止，不自行下载。下一次若获授权，先固定并下载D2 v4，记录版本、清单、大小和校验和，只做包级结构、标签、重复与split审计；D3在补齐原来源许可链及分组计划后再决定是否下载。D1仅作次级包审计。不开始训练、模型设计、Baseline冻结或工作树建设。
+Stage 2B-1到“准备下载”停止，不自行下载。用户下一步可在浏览器/VS Code Terminal可见获取D2 v4，保存至`IOR-YOLO/data/raw/multistage_apple_v4/`，保留原始文件名，然后核验大小与SHA256并继续包级审计。D3需先补许可链和分组方案。D2仍Not Frozen；不开始正式split、训练、模型设计、Baseline冻结或工作树建设。

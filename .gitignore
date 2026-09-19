@@ -52,6 +52,12 @@ token.json
 /data/processed/**
 /datasets/**
 /downloads/**
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
 
 # Model weights and exported runtime artifacts
 *.pt
