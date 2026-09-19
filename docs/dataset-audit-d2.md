@@ -1,4 +1,4 @@
-# D2 v4 — Stage 2B-2 Raw ZIP Audit
+# D2 v4 — Raw ZIP and Integrity Audit
 
 更新：2026-09-19。**D2 = NOT FROZEN**。这是对用户取得的 `dataset-20260508.zip` 的低成本只读审计：读取ZIP目录、六份VIA JSON和JPG图像头，不解压、不修改原包、不解码全图、不重划分。取得来源、许可及SHA256见[获取记录](data-acquisition-d2.md)。`Confirmed`表示可由本次原包直接复核；`Supported`表示多条线索一致但尚缺像素/采集来源证明；`Unresolved`表示尚无足够证据解释或排除。
 
@@ -67,3 +67,68 @@
 | 腐坏、近重复、果实级泄漏 | JSON结构与图像头通过不等于完整像素解码；无fruit/tree/session ID确认 | 后续分批只读内容与近重复/采集分组核查，不能声称无泄漏 |
 
 **D2 = NOT FROZEN**。包可读取并有三阶段逐果polygon，但标签缺口、增强跨split候选与坐标例外仍阻止信任现有官方划分或开展正式Baseline。本轮到只读审计为止，不创建新split，不训练，不改原始数据。
+
+## Stage 2B-3 — Leakage & Annotation Integrity Audit（2026-09-19）
+
+本节更新上文Stage 2B-2的“尚未全图解码”和“潜在泄漏”状态；上文作为阶段记录保留。**D2 = NOT FROZEN**。使用临时隔离的Pillow 12.3.0运行环境，未变更项目环境；脚本只读ZIP并写小型CSV，不解压或修改raw。
+
+```zsh
+uv run --with pillow python IOR-YOLO/scripts/05_audit_d2_integrity.py --archive IOR-YOLO/data/raw/multistage_apple_v4/dataset-20260508.zip --manifest-dir IOR-YOLO/data/manifests
+```
+
+逐成员读取时校验ZIP CRC、计算解压后文件SHA256，并用Pillow执行`verify()`及完整像素`load()`。**Confirmed：2812/2812张成功完整解码**（original 1406、resize 1406）；损坏、截断、不可读、格式不符各为0。本轮独立复算原包SHA256仍为`049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce`。解码成功不证明视觉标签准确。
+
+### 可追溯清单与候选图
+
+| 文件 | 内容与边界 |
+|---|---|
+| [files_sha256.csv](../IOR-YOLO/data/manifests/files_sha256.csv) | 2812行；split、variant、filename、stem、extension、解码尺寸、字节数、成员SHA256、source_family、candidate_group_id及解码状态。`source_family`仅去掉stem末尾**一个**明确的`_brightness`/`_noise`/`_gaussian`/`_hsv`/`_gamma`后缀并转小写，不按数字猜同源。 |
+| [duplicate_report.csv](../IOR-YOLO/data/manifests/duplicate_report.csv) | 1600条**关系边**，包括1406个original↔resize配对、命名家族跨split关系、所有原始图像精确SHA重复及轻量dHash候选。逐行记录relation_type、evidence、status和confidence；行数不等于独立样本或泄漏家族数。 |
+| [class_counts.csv](../IOR-YOLO/data/manifests/class_counts.csv) | split×variant的JSON类别区域数。resize是同图像另一表示，不重复计为独立实例。 |
+
+候选图规则：同`source_family`、相同原始图像SHA256及`Supported`的跨名视觉关系连边；`Candidate`/`Unresolved`的跨名视觉边不自动合并。resize按同split+filename附在原始节点上。**Confirmed脚本统计**：1406张非resize图构成1107个候选连通组，67组跨现有split，涉及205张图，最大组6张。这是**审计候选图，不是来源真值或新划分**；命名边仍需复核，fruit/tree/session关系未知。
+
+### 官方split泄漏证据
+
+Stage 2B-2的**67个命名候选家族**按其最强跨split关系分级：**Confirmed 0、Supported 65、Candidate 2、Unresolved 0**。Supported表示至少一对64×64亮度结构相关度≥0.995；多数组同时有相同polygon列表，但尚非确定的增强变换证明。Candidate为`IMG_13960`与`IMG_14040`，相同polygon、相关度约0.994468与0.990993，未达保守阈值。家族级Supported不表示内部每条边均成立，例如`172`家族train↔val高相似、与test的关系仍为Candidate。
+
+**这67个家族之外，至少3组跨split图像已确认泄漏**：不同文件名但**解压后SHA256完全相同**。
+
+| 跨split文件对 | SHA256前缀 | 标注 |
+|---|---|---|
+| `test/138.jpg` ↔ `train/251.jpg` | `7d579f7f…` | 各1区域、类别相同，polygon列表不完全相同 |
+| `train/138_brightness.jpg` ↔ `val/251_brightness.jpg` | `f81d8e3a…` | 各1区域、类别相同，polygon列表不完全相同 |
+| `train/398.jpg` ↔ `val/166.jpg` | `32e6e897…` | 各2区域、类别相同，polygon列表不完全相同 |
+
+相同SHA256足以确认跨集图像字节重复；标注几何差异意味着不能只去重图像而不审查标签。非resize图另有7组只在同一split内的精确重复。**官方split不得直接用于正式Baseline或最终评价。**
+
+由于跨名精确重复证明文件名规则不足，才对1406张非resize图增加**256-bit dHash**轻量筛查：跨split不同source_family且汉明距离≤12的候选，再用64×64亮度相关度复核；没有用视觉大模型。剔除精确SHA关系后，额外得到**25对Supported**（相关度≥0.995）与**26对Candidate**。它们是**配对数**，不可与65个家族或3组精确重复相加；低于阈值的边不并入候选图。仍无法排除所有未命名近重复及同果不同视角/同树/同场次关系。
+
+### Original ↔ resize与标注完整性
+
+1406对文件名、JSON记录、逐图区域数和类别序列一一对应。完整解码后，以LANCZOS重采样的RGB平均绝对差（MAE）与64×64亮度相关度筛查。JPEG重编码会造成非零像素差，**相似不等于已确定具体resize算法**。1403对满足相关度≥0.995且MAE≤20，属于**Supported的同一样本不同表示**；其余3对均可解码，但“只做resize”仍**Unresolved**：
+
+| original ↔ resize | 尺寸 | 相关度 / MAE | 区域数 |
+|---|---|---|---:|
+| `train/172_brightness.jpg` | 277×326 → 480×640 | 0.772601 / 39.1184 | 1 ↔ 1 |
+| `val/172_noise.jpg` | 277×326 → 480×640 | 0.768708 / 36.4767 | 1 ↔ 1 |
+| `train/327.jpg` | 327×254 → 640×480 | 0.848415 / 31.3109 | 2 ↔ 2 |
+
+这正是Stage 2B-2的三张异常尺寸图；对应坐标缩放最大残差约27.66、27.66、6.43像素。原始和resize均为可解码JPEG，均无EXIF Orientation字段。不能据此推断正常采集差异、裁剪、配错图或其他处理原因，也不能把全部1406对无条件当作等价表示。
+
+**无类别区域（Confirmed）**：`test/IMG_54350.jpg#3`及resize对应区域的`region_attributes={}`，图像级`file_attributes={}`，无其他可恢复类别字段。original多边形为4顶点、非零面积约39像素²；几何结构有效不代表语义可靠。保持**Unlabeled / Unknown**，不补标或删除。**2575 = 全部polygon regions；2574 = 三类有效标签regions；1 = 无类别region**。Mendeley的2573与README Key Features的2754继续记为**Unresolved source-side discrepancy**，不推测原因。
+
+### D2 Freeze Gate
+
+| 条件 | 当前判断 |
+|---|---|
+| 1 source/version；2 license；3 raw SHA256 | **通过**：官方v4/CC BY 4.0记录与本地SHA256复核。 |
+| 4 package可解析；5 image/annotation/instance统计 | **包级通过**：六份JSON可解析，2812图完整解码，1406非resize图、2575区域/2574有效类已核实；不等于标注无瑕疵。 |
+| 6 来源数字差异解释或正式登记 | **已登记但原因未解**：1124、2573、2754及比例差异。 |
+| 7 三阶段标签语义 | **部分通过**：是视觉颜色阶段，不是生理成熟真值；1个region无类别。 |
+| 8 离线增强关系；9 双分辨率/重复关系 | **部分通过**：67个命名家族、3组跨集精确重复、25对新增强支持跨名关系；1403对resize强支持，3对异常待解。 |
+| 10 无未知严重annotation问题 | **未通过**：缺失类别、同字节图的polygon不完全一致、resize坐标/内容例外。 |
+| 11 可信split前提 | **未通过**：官方split已确认泄漏，另有Candidate边与未知fruit/tree/session关系。 |
+| 12 支持检测任务 | **任务形式通过**：逐果polygon与阶段字段存在；正式协议仍取决于完整性与分组处理。 |
+
+**停止点**：本轮只读审计，不生成新train/val/test、不改raw、不训练。候选图足以开始**设计**Group-Aware Split规则，但尚不足以执行或冻结可信split；下一阶段需复核候选边、跨名高相似图、标签/坐标例外与可用采集元数据。

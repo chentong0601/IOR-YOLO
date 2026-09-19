@@ -10,9 +10,9 @@
 
 **Stage 2 — Dataset Acquisition & Audit**。
 
-Stage 1与Stage 2A Dataset Feasibility Gate已通过。当前 **Stage 2B-2 — Controlled Acquisition & Raw Dataset Audit** 已完成本轮低成本只读ZIP与JSON审计；全图解码、跨split来源/近重复核查及可信评价划分尚未完成，不能将完整Stage 2视为完成。
+Stage 1与Stage 2A Dataset Feasibility Gate已通过。**Stage 2B-3 — Leakage & Annotation Integrity Audit** 本轮已完成全图解码、SHA256、候选同源图和标注核查。官方split已确认泄漏；可信评价划分尚未建立，完整Stage 2未完成。
 
-项目起点为科研工程空白：目录与Research Skill System已经建立；已取得D2原包并完成第一轮图像头/JSON审计，但尚无像素级完整审计、Baseline实现、正式训练或实验结果。目录及预留E00–E10不代表完成任何实验。
+项目起点为科研工程空白：目录与Research Skill System已经建立；D2原包已完成本轮只读数据审计，但尚无正式划分、Baseline实现、训练或实验结果。目录及预留E00–E10不代表完成任何实验。
 
 ## Research Question
 
@@ -42,7 +42,7 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Dataset Status
 
-**Not Frozen**。Dataset Feasibility Gate建议D2 Multi-Stage Pixel-Level Apple v4作为Primary Dataset Candidate，D3 Fuji Ripeness & Size作为条件性External Dataset Candidate，D1 Orchard apple maturity降为Secondary。D2为果皮颜色阶段而非生理真值。D2 ZIP哈希由用户记录；本轮读得非resize图像1041/126/239（合计1406）、resize对应1406张；原始JSON有2575区域，2574个三类有效标签，另有test一条类别缺失。67个增强后缀归一化来源名族跨split且大量polygon完全一致，官方划分独立性存重大风险。详见[受控获取记录](docs/data-acquisition-d2.md)与[原包审计](docs/dataset-audit-d2.md)。
+**Not Frozen**。D2仍是Primary Dataset Candidate；D3为条件性External候选，D1为Secondary。D2的2812张图均完整解码；非resize的1406张含2575个polygon，其中2574有三类有效标签，test一条类别缺失。67个命名跨split候选家族中65个获视觉支持、2个仍为候选；**另有3组跨split字节完全相同的图像，确认官方split泄漏**。候选图有1107个组，其中67组跨现有split；1403对original/resize相似度高，3对异常。详见[原包审计](docs/dataset-audit-d2.md)和[文件清单](IOR-YOLO/data/manifests/files_sha256.csv)。
 
 ## Baseline Status
 
@@ -58,19 +58,19 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 - 数据元信息：D1、D2均有CC BY 4.0公开入口；D2采集、视觉标注协议和结构证据最完整，但有派生图泄漏高风险；D3 Kaggle列GPL 3且约62.36 GB，作者论文确认多视角/重叠采集，原来源许可链与分组仍需包级确认。
 - 代码证据：静态核验了官方通用框架及部分作者数据/推理仓库；存在链接不等于完整训练可复现。
 - **本项目实验证据：无。** 所有外部论文数字均为其作者报告，未在本项目复现。
-- D2原包已做图像头与JSON只读审计；已确认本包图像、记录和区域数及类别缺口，但完整图像解码、增强派生关系、fruit/tree/session独立性仍待验证。2826个ZIP成员不等于图像/实例数。
+- D2原包哈希已复核、2812图完整解码；manifest记录图像哈希、类别和关系边。真实字节重复跨split已确认，但全部增强派生关系及fruit/tree/session独立性仍待验证。
 
 ## Open Questions
 
 1. D2包内1406非resize图像与2575区域（2574有效类别）为何与外部1124/2573/2754等数字冲突？实际来源链如何解释？
-2. 缺少树、果实或session ID时，保守source-family split能否把近重复风险降到可接受范围？
+2. 在已确认跨集重复、67个命名候选家族及跨名视觉候选之上，如何复核来源图并建立足够可信的group-aware评价方案？缺少fruit/tree/session ID带来何种主张边界？
 3. 基线主要失败来自定位、标签歧义、跨级判断还是光照？
 4. 天然光照分组与外部标签兼容性是否足以支撑泛化主张？
 5. D3原始两来源的再利用许可与Kaggle打包许可是否一致，能否恢复fruit/tree/date/sequence分组？
 
 ## Risks
 
-颜色被当作生理真值；D2有跨split增强来源名及相同polygon的强风险、test一条无类别区域、三张非常规尺寸图及坐标转换例外；D3同果多视角和SfM重叠泄漏；日期/设备与标签混杂；视觉阶段边界不确定；D2的1124/1406、2573/2574/2754及划分比例来源差异未解释；二类外部集强行映射三类；合成扰动替代真实光照泛化。详见[原包审计](docs/dataset-audit-d2.md)。
+颜色被当作生理真值；**D2官方split已有确认的跨集重复**，且相同图像的polygon并不总一致；test一条无类别区域、三对original/resize内容/坐标异常；fruit/tree/session分组未知。D2的1124/1406、2573/2574/2754及比例差异未解释。D3同果多视角与SfM重叠、二类外部标签强映射、合成扰动替代真实光照泛化亦为后续风险。详见[原包审计](docs/dataset-audit-d2.md)。
 
 ## Decisions
 
@@ -79,8 +79,9 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 - 助手建议：工作任务定义、候选清单、Ordinal/CPIP Modify、IOR保留工作名称；不标为用户已冻结研究路线。
 - Stage 1验收时的判断：10项产物条件已满足；当时Stage 2只推荐、未开始。
 - 用户已确认进入Stage 2；本轮Dataset Feasibility Gate已通过。D2/D3/D1的角色是证据驱动建议，Dataset仍Not Frozen，需下载后的包级审计才能确认。
-- 用户已可见下载并首次验证D2原包；当前仅准备只读ZIP结构命令，真实结构检查由用户在终端启动。D2仍Not Frozen。
+- Stage 2B-1结束时，用户已可见下载并首次验证D2原包；当时只准备了ZIP结构命令。D2仍Not Frozen。
 - 用户进一步确认Stage 2B-2低成本只读审计；已执行真实ZIP图像头和JSON检查，证据与尚未解决风险记于审计文档。D2保持Not Frozen；未建立或冻结Baseline。
+- 用户确认Stage 2B-3只读泄漏与完整性审计；已确认官方split有3组跨集字节重复，因此**不得直接沿用官方split做正式Baseline/最终评价**。本轮不创建替代split，D2仍Not Frozen。
 
 ## Rejected Ideas
 
@@ -88,4 +89,4 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Next Actions
 
-本轮在[原包审计](docs/dataset-audit-d2.md)停止。后续首先核验增强家族的像素/来源关系、test缺失标签、异常尺寸与坐标边界，并确定能否建立可信隔离前提；未获下一轮授权不创建split或运行训练。D3仍需补许可链与分组方案。D2 Not Frozen。
+本轮在[原包审计](docs/dataset-audit-d2.md)停止。后续可基于[关系边清单](IOR-YOLO/data/manifests/duplicate_report.csv)设计Group-Aware Split规则，但先复核候选边、同字节图不同polygon、test无类别区域、三对resize异常及可得采集元数据；**本轮不生成或冻结split，不运行Baseline**。D3仍需补许可链。D2 Not Frozen。

@@ -1,0 +1,21 @@
+split,variant,class_label,instance_count
+train,original,immature apple,713
+train,original,mature apple,650
+train,original,semi-mature apple,618
+train,resize,immature apple,713
+train,resize,mature apple,650
+train,resize,semi-mature apple,618
+val,original,immature apple,67
+val,original,mature apple,58
+val,original,semi-mature apple,60
+val,resize,immature apple,67
+val,resize,mature apple,58
+val,resize,semi-mature apple,60
+test,original,Unlabeled / Unknown,1
+test,original,immature apple,141
+test,original,mature apple,131
+test,original,semi-mature apple,136
+test,resize,Unlabeled / Unknown,1
+test,resize,immature apple,141
+test,resize,mature apple,131
+test,resize,semi-mature apple,136

@@ -1,6 +1,6 @@
 # D2 v4 — Controlled Acquisition Record
 
-更新：2026-09-19。阶段：Stage 2B-2，**已获取原包并完成低成本只读ZIP审计；D2 = NOT FROZEN**。首次哈希及路径验证值由用户提供；本轮读取实际ZIP目录、六份JSON和图像头，未重新计算SHA256、完整解码像素或改写Raw Data。逐项结果见[原包审计](dataset-audit-d2.md)。
+更新：2026-09-19。Stage 2B-2已获取原包并完成ZIP/JSON结构审计；Stage 2B-3又独立复算原包SHA256、完整解码2812张图及核对跨split重复。**D2 = NOT FROZEN**。以下表格保留获取时的来源/首次验证记录；后续实测结论与风险以[原包审计](dataset-audit-d2.md)的Stage 2B-3节为准。Raw Data未改动。
 
 | 字段 | 记录 | 证据 / 状态 |
 |---|---|---|
@@ -22,7 +22,7 @@
 | 下载日期 | **Unverified**：2026-09-19为本次报告/登记日期，不等于实际下载日期 | 用户尚未提供下载时间 |
 | 原始下载文件名 | `dataset-20260508.zip` | 用户在VS Code/本地终端完成首次验证后的报告 |
 | 实际文件大小（bytes） | **290131787** | 用户首次验证值；本轮本地只读 `stat` 独立核对一致 |
-| 本地 SHA256 | `049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce` | 用户首次验证值；本轮没有重新计算 |
+| 本地 SHA256 | `049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce` | 用户首次验证值；Stage 2B-3已独立复算一致，见[原包审计](dataset-audit-d2.md) |
 | 原包格式 / 成员 / 可疑路径 | ZIP；**2826 ZIP members**；`unsafe_paths=[]`（首次路径检查） | 用户首次验证值；成员总数包括可能的目录、图像、标注等，不等于图像数或实例数；`unsafe_paths=[]`不证明成员内容安全/完整 |
 | 随包划分比例 | README声称70%/10%/20%；实际非resize图像1041/126/239 = **74.04%/8.96%/17.00%** | [原包审计](dataset-audit-d2.md)；差异原因Unresolved |
 | 本地 raw 存储路径 | `IOR-YOLO/data/raw/multistage_apple_v4/dataset-20260508.zip` | 用户实际保存位置；raw目录被根 `.gitignore` 排除 |
