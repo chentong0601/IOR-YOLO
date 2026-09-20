@@ -8,7 +8,7 @@
 
 ## Current Stage
 
-**Stage 2B-5 — D2 Dataset Protocol & Group-Aware Split Freeze 已完成**；尚未进入E01 Baseline。
+**Stage 3A-V配置核验完成；Stage 3B结果分析程序已准备；E01 = READY TO RUN，尚未COMPLETED。** D2协议和划分保持冻结；本阶段只转换、配置、测试和准备分析，正式E01训练/Val/Test均尚未开始。Windows RTX 3070现场CUDA预检仍须在工作站到手后通过。
 
 Stage 1与Stage 2A Dataset Feasibility Gate已通过。2B-5P候选方案经用户审核确认，已按[正式冻结协议](docs/dataset-freeze-d2.md)完成两次确定性重建与验证。Stage 2B-4H的21案人工决定及1112个evidence-based source groups继续有效。官方split已确认泄漏，不可用于正式评价；现已冻结guard-aware 70/15/15划分。
 
@@ -52,7 +52,9 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 
 ## Baseline Status
 
-**Not Selected**。优先候选YOLO11n、YOLOv8n、Faster R-CNN R50-FPN；补充RT-DETRv2-R18与crop ResNet18，见 [基线候选](docs/literature/baseline-candidates.md)。未安装运行，无复现结果或冻结recipe。
+**E01主Baseline：官方预训练YOLO11n-seg，instance segmentation；READY TO RUN，未正式训练。** 原始D2逐实例polygon保留为YOLO segmentation标签，同时可评估box/mask。冻结派生集1099图，Ultralytics官方loader三split均成功读取且0损坏；模型在Mac完成无权重的CPU构建/极小前向。固定配置见[实验配置](IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml)，受控流程见[E01协议](docs/e01-baseline-protocol.md)。YOLOv8n-seg仅是未来可讨论的compatibility baseline；其他Stage 1候选保留历史研究记录，不属于当前E01任务。
+
+训练前核对固定Ultralytics 8.3.220源码后，将先前候选的显式`SGD/lr0=.01`更正为官方默认机制`optimizer=auto`；trainer会忽略请求的lr0和momentum，实际优化器/LR须由正式run记录。batch8是RTX 3070预设显存约束，仅在训练前短smoke证实OOM时允许留痕降至4；100 epoch是上限，Val可选best，Test不得用于选择。见[锁定版本默认与对照](docs/e01-ultralytics-83220-defaults.md)。已准备[Val优先的分析协议](docs/e01-analysis-protocol.md)、逐实例匹配、阶段错误、失败案例导出、真实结果图及NA论文表；Test要求`--final-test`且必须已有正式最终评价记录。**这些代码尚未读取正式实验输出，也没有性能结论。**
 
 ## Proposed Method Status
 
@@ -93,6 +95,7 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 - 用户已完成Stage 2B-4H的21案人工裁决。C01/C02合组，B01/B02及S01–S10接受，D01–D03保留标注冲突，R01–R03排除dataset-provided resize，U01仅将未知区域排除出派生有效三类目标。已重建候选source groups；Raw Data与正式split未改变，D2仍Not Frozen。
 - 用户授权Stage 2B-5P仅准备可冻结候选协议。已构建独立于source group的guard clusters、候选representation manifest与单次确定性模拟；严格Policy B及无base组处置是助手建议，**尚非用户确认的最终Freeze决定**。未产生正式split或选择最终seed。
 - 用户随后明确确认Stage 2B-5：严格Policy B、6无base组排除、U01普通背景FP语义、70/15/15、SHA+固定上下文seed以及guard cluster划分规则。已生成冻结manifest并通过两次逐字节重建及关系检查，**D2协议与划分FROZEN**；此前2B-5P条目保留为当时状态。
+- 用户授权Stage 3A仅准备E01：以冻结manifest转换出1099张逐实例分割派生集，确定YOLO11n-seg、固定训练配置与运行记录，验证后交给用户在Windows RTX 3070上可见执行正式训练；不得按模型性能改变冻结split。本机MacBook Air M5/16 GB用于开发、转换与极小CPU/MPS smoke；无独显联想机不作训练平台；RTX 3070工作站稍后用于全部正式训练、验证与最终测试。所有跟踪脚本和配置使用跨平台相对路径或`pathlib`，Mac不安装CUDA。
 
 ## Rejected Ideas
 
@@ -100,4 +103,4 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 
 ## Next Actions
 
-本轮停在[Stage 2B-5正式冻结](docs/dataset-freeze-d2.md)，不自动进入下一阶段。下一步可准备E01 Baseline环境和实际evaluator对U01的端到端核验，再决定Baseline recipe与可见训练命令；模型训练尚未开始。研究结论必须保留没有fruit/tree/session ID和来源文字冲突的局限。D3仍需补许可链。
+Stage 3A已达到**E01 READY TO RUN，不是COMPLETED**。用户在RTX 3070工作站可用后按[Windows步骤](docs/windows-e01-training-setup.md)验证CUDA、重建派生集、核对干净Git提交，并在VS Code Terminal亲自启动正式训练；最终test仅在模型确定后一次运行。现场CUDA/权重尚未验证，任何预检失败均先停止。尚无正式训练或结果。研究结论须保留没有fruit/tree/session ID和来源文字冲突的局限；D3仍需补许可链。

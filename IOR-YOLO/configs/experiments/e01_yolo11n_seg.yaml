@@ -1,0 +1,57 @@
+# E01 standard transfer-learning baseline. No model/ordinal/CPIP changes.
+experiment_id: e01_yolo11n_seg
+status: ready_to_run_not_executed
+task: segment
+model: yolo11n-seg.pt
+pretrained: true
+dataset_protocol_version: d2-v4-stage2b5-v1
+dataset_zip_sha256: 049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce
+experiment_pool_sha256: a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5
+dataset_split_sha256: 0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1
+protocol_yaml_sha256: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870
+python_version: "3.11"
+torch_version: "2.5.1+cu121"
+torchvision_version: "0.20.1+cu121"
+ultralytics_version: "8.3.220"
+target_platform: Windows RTX 3070
+training_seed: 0  # Pinned Ultralytics default; unrelated to dataset split seed.
+split_seed_64: 13436313853456744620
+device_policy: cuda:0_required
+train:
+  imgsz: 640
+  epochs: 100
+  batch: 8  # Predeclared 8 GB RTX 3070 accommodation; not performance-tuned.
+  optimizer: auto  # Ultralytics 8.3.220 default; chooses actual optimizer/LR at trainer setup.
+  lr0: 0.01  # Requested package default; ignored when optimizer=auto. Capture effective optimizer LR.
+  lrf: 0.01
+  weight_decay: 0.0005
+  cos_lr: false
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1  # Package default; auto mutates effective value to 0.0.
+  momentum: 0.937  # Package default; ignored when optimizer=auto.
+  patience: 100
+  workers: 4
+  seed: 0
+  deterministic: true
+  amp: true
+  cache: false
+  close_mosaic: 10
+  plots: true
+  save: true
+  val: true
+  augmentation:
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+    degrees: 0.0
+    translate: 0.1
+    scale: 0.5
+    shear: 0.0
+    perspective: 0.0
+    flipud: 0.0
+    fliplr: 0.5
+    mosaic: 1.0
+    mixup: 0.0
+    copy_paste: 0.0
+    copy_paste_mode: flip
