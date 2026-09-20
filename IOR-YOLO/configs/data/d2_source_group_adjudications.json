@@ -1,0 +1,31 @@
+{
+  "stage": "Stage 2B-4H",
+  "decision_date": "2026-09-20",
+  "scope": "Human-reviewed same-source relations; physical acquisition ID remains unverified",
+  "accepted_edges": [
+    {
+      "case_id": "C01",
+      "files": ["train/IMG_13960_brightness.jpg", "val/IMG_13960.jpg"],
+      "prior_confidence": "Candidate",
+      "reviewed_confidence": "Strongly Supported"
+    },
+    {
+      "case_id": "C02",
+      "files": ["train/IMG_14040_brightness.jpg", "val/IMG_14040.jpg"],
+      "prior_confidence": "Candidate",
+      "reviewed_confidence": "Strongly Supported"
+    },
+    {
+      "case_id": "B01",
+      "files": ["test/3100.jpg", "train/1640.jpg"],
+      "prior_confidence": "Supported",
+      "reviewed_confidence": "Strongly Supported"
+    },
+    {
+      "case_id": "B02",
+      "files": ["test/1270.jpg", "train/2340.jpg"],
+      "prior_confidence": "Supported",
+      "reviewed_confidence": "Strongly Supported"
+    }
+  ]
+}

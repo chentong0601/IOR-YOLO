@@ -1,0 +1,121 @@
+{
+  "python": "3.14.7",
+  "runs": [
+    {
+      "run": 1,
+      "builder_summary": {
+        "original_images": 1406,
+        "source_groups": 1114,
+        "group_size_distribution": {
+          "1": 949,
+          "2": 60,
+          "3": 95,
+          "4": 4,
+          "6": 6
+        },
+        "largest_group": 6,
+        "cross_official_split_groups": 65,
+        "named_cross_families": 67,
+        "named_family_status": {
+          "Strongly Supported": 65,
+          "Candidate": 2
+        },
+        "dhash_supported_pairs": 25,
+        "dhash_pairs_merging_previous_components": 6,
+        "relation_confidence_counts": {
+          "Strongly Supported": 389,
+          "Candidate": 35,
+          "Confirmed": 10,
+          "Supported": 1428,
+          "Unresolved": 3
+        },
+        "valid_instances": 2574,
+        "unlabeled_regions": 1
+      },
+      "manifest_hashes": {
+        "source_groups.csv": "17aa42a5150a36e778ef4b7e38e345a6dbdb3abacdb56d8ba8987c03829e9907",
+        "source_group_relations.csv": "195ac840637fecf563954f942245c47aa99ed617b82b097790cfe19a24027683",
+        "source_family_review.csv": "454460f597105ec2930f14f3687269c90194e3faefdf9be06fbdd6c3c16de29e"
+      },
+      "simulation_100_seed_sha256": "b9957dadcb9c90f101def50f8219c9667c9a7a85b98de79e2c7206391e068cba"
+    },
+    {
+      "run": 2,
+      "builder_summary": {
+        "original_images": 1406,
+        "source_groups": 1114,
+        "group_size_distribution": {
+          "1": 949,
+          "2": 60,
+          "3": 95,
+          "4": 4,
+          "6": 6
+        },
+        "largest_group": 6,
+        "cross_official_split_groups": 65,
+        "named_cross_families": 67,
+        "named_family_status": {
+          "Strongly Supported": 65,
+          "Candidate": 2
+        },
+        "dhash_supported_pairs": 25,
+        "dhash_pairs_merging_previous_components": 6,
+        "relation_confidence_counts": {
+          "Strongly Supported": 389,
+          "Candidate": 35,
+          "Confirmed": 10,
+          "Supported": 1428,
+          "Unresolved": 3
+        },
+        "valid_instances": 2574,
+        "unlabeled_regions": 1
+      },
+      "manifest_hashes": {
+        "source_groups.csv": "17aa42a5150a36e778ef4b7e38e345a6dbdb3abacdb56d8ba8987c03829e9907",
+        "source_group_relations.csv": "195ac840637fecf563954f942245c47aa99ed617b82b097790cfe19a24027683",
+        "source_family_review.csv": "454460f597105ec2930f14f3687269c90194e3faefdf9be06fbdd6c3c16de29e"
+      },
+      "simulation_100_seed_sha256": "b9957dadcb9c90f101def50f8219c9667c9a7a85b98de79e2c7206391e068cba"
+    },
+    {
+      "run": 3,
+      "builder_summary": {
+        "original_images": 1406,
+        "source_groups": 1114,
+        "group_size_distribution": {
+          "1": 949,
+          "2": 60,
+          "3": 95,
+          "4": 4,
+          "6": 6
+        },
+        "largest_group": 6,
+        "cross_official_split_groups": 65,
+        "named_cross_families": 67,
+        "named_family_status": {
+          "Strongly Supported": 65,
+          "Candidate": 2
+        },
+        "dhash_supported_pairs": 25,
+        "dhash_pairs_merging_previous_components": 6,
+        "relation_confidence_counts": {
+          "Strongly Supported": 389,
+          "Candidate": 35,
+          "Confirmed": 10,
+          "Supported": 1428,
+          "Unresolved": 3
+        },
+        "valid_instances": 2574,
+        "unlabeled_regions": 1
+      },
+      "manifest_hashes": {
+        "source_groups.csv": "17aa42a5150a36e778ef4b7e38e345a6dbdb3abacdb56d8ba8987c03829e9907",
+        "source_group_relations.csv": "195ac840637fecf563954f942245c47aa99ed617b82b097790cfe19a24027683",
+        "source_family_review.csv": "454460f597105ec2930f14f3687269c90194e3faefdf9be06fbdd6c3c16de29e"
+      },
+      "simulation_100_seed_sha256": "b9957dadcb9c90f101def50f8219c9667c9a7a85b98de79e2c7206391e068cba"
+    }
+  ],
+  "matches_existing_manifest": true,
+  "same_seed_simulation_identical": true
+}

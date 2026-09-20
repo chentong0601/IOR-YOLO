@@ -1,0 +1,18 @@
+{
+  "raw_sha256": "049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce",
+  "files_sha256_rows": 2812,
+  "source_groups_rows": 2812,
+  "original_rows": 1406,
+  "resize_rows": 1406,
+  "valid_original_regions": 2574,
+  "unknown_original_regions": 1,
+  "source_group_relations_rows": 1865,
+  "family_review_rows": 67,
+  "independent_family_review_rows": 67,
+  "candidate_dhash_rows": 26,
+  "csv_lf_only": true,
+  "manifest_sha_size_mismatch": {
+    "original_sha_or_size_mismatches": [],
+    "resize_sha_mismatches": []
+  }
+}

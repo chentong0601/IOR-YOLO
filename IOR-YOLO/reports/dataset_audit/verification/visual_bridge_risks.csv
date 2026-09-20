@@ -1,0 +1,3 @@
+file_a,file_b,corr64,full_corr,dhash_distance,bridge
+test/3100.jpg,train/1640.jpg,0.996983,0.984046,3,True
+test/1270.jpg,train/2340.jpg,0.995166,0.989091,7,True

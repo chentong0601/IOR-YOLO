@@ -2,6 +2,8 @@
 
 更新：2026-09-19。**D2 = NOT FROZEN**。这是对用户取得的 `dataset-20260508.zip` 的低成本只读审计：读取ZIP目录、六份VIA JSON和JPG图像头，不解压、不修改原包、不解码全图、不重划分。取得来源、许可及SHA256见[获取记录](data-acquisition-d2.md)。`Confirmed`表示可由本次原包直接复核；`Supported`表示多条线索一致但尚缺像素/采集来源证明；`Unresolved`表示尚无足够证据解释或排除。
 
+**当前补注（2026-09-20，Stage 2B-4H）**：下文分阶段保留原始审计与裁决前1114组快照；用户人工裁决后最新source-group清单为**1112组**。21案决定、关系分级与实验处置见[本页末尾补注](#stage-2b-4h-人工裁决后的数据审计状态)及[人工复核表](human-review-stage2b4.md)。原包和原始标注未变，D2仍NOT FROZEN。
+
 ## 审计范围与复现
 
 - 原包：`IOR-YOLO/data/raw/multistage_apple_v4/dataset-20260508.zip`，290131787 bytes；SHA256 `049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce` 为用户首次验证记录，本次结构/内容审计未重新计算哈希。ZIP有2826个成员，不等于图像/实例数。
@@ -132,3 +134,38 @@ Stage 2B-2的**67个命名候选家族**按其最强跨split关系分级：**Con
 | 12 支持检测任务 | **任务形式通过**：逐果polygon与阶段字段存在；正式协议仍取决于完整性与分组处理。 |
 
 **停止点**：本轮只读审计，不生成新train/val/test、不改raw、不训练。候选图足以开始**设计**Group-Aware Split规则，但尚不足以执行或冻结可信split；下一阶段需复核候选边、跨名高相似图、标签/坐标例外与可用采集元数据。
+
+## Stage 2B-4 — Source Group 与划分协议设计（2026-09-20）
+
+本节是对 Stage 2B-3 **初步候选图** 的更保守复核，不回写旧审计记录。项目级 `apple-dataset-audit` 规则下，仅只读原始 ZIP 与现有 manifests；新增 [同源组解析](source-group-resolution-d2.md)和[划分协议模拟](split-protocol-d2.md)。**D2 = NOT FROZEN**，无正式 split。
+
+1406 张非 resize 图像形成 **1114 个证据支持候选组**（大小 1/2/3/4/6 组数为 949/60/95/4/6），**65 组、200 张图**跨官方 split。之前的 1107 组/67 跨集组采用更宽的命名并组规则；本轮将仅凭命名/几何但像素阈值不足的边保持 Candidate，故数字改变，并非原始数据变化。67 个跨 split 命名家族最终为 Strongly Supported 65、Candidate 2；3 个跨 split 不同名 SHA256 精确重复组继续确认官方 split 泄漏。25 对高相似 dHash 关系中 6 对实际连接原本分开的组；26 对 Candidate 中 23 对两端仍在不同组。全图 2812/2812 可解码、2575/2574/1 区域计数不变。
+
+### D2 Freeze Gate 再评估
+
+| 条件 | 状态 | 依据与剩余问题 |
+|---|---|---|
+1 source/version | **PASS** | 官方 Mendeley Data v4 与原包身份已登记。 |
+2 license | **PASS** | 官方数据许可 CC BY 4.0 已登记，正式使用需署名。 |
+3 raw SHA256 | **PASS** | 本地 `dataset-20260508.zip` 的 SHA256 已两次核对。 |
+4 package readability | **PASS** | 2812/2812 图完整解码，六份 JSON 可解析。 |
+5 image/annotation counts | **PASS** | 1406 original + 1406 resize；2575 区域、2574 有效标签、1 Unknown。此项只确认统计，不证明标注正确。 |
+6 source-side numeric discrepancies | **UNRESOLVED** | 1124、2573、2754 及 README 比例差异已登记，但来源口径未解。 |
+7 label semantics | **PARTIAL** | 三阶段按视觉颜色标注，不是生理成熟真值；Unknown region 待处理。 |
+8 augmentation relations | **PARTIAL** | 65 命名家族强支持派生关系，2 Candidate；仍缺真正采集来源 ID。 |
+9 duplicate relations | **PARTIAL** | 3 跨集 SHA 重复已确认；25 跨名视觉边支持，23 跨组 dHash Candidate 和 3 对 resize 异常待核。 |
+10 annotation integrity | **PARTIAL** | 同像素图 polygon 不一致、Unknown region、异常坐标已定位；派生协议与评价影响未验证。 |
+11 source group reliability | **PARTIAL** | 1114 个可复算候选组，但 Candidate 边及 fruit/tree/session 关系未知。 |
+12 credible split prerequisites | **PARTIAL** | 两比例 dry-run 可保持已纳入图的关系不跨集；正式评估图像选择、ignore 规则、采集分组与 Candidate 审核未完成。 |
+
+**停止点**：官方 split 不可用于正式 Baseline；候选 group-aware 协议只达到 Simulation Only。D2 保持 **NOT FROZEN**；不生成正式 train/val/test、不训练。
+
+**Stage 2B-4V 独立复核（2026-09-20）**：重新从 ZIP/JSON/哈希/像素建图，组数、成员与组号和现有 `source_groups.csv` 完全一致；阈值、桥边、Candidate 残余风险及500×2次模拟分布见[审核包](review-packet-stage2b4.md)与 `IOR-YOLO/reports/dataset_audit/verification/`。这些是候选图的可复算性证据，**不是来源真值或 Dataset Freeze**。未进入 Stage 2B-5。
+
+## Stage 2B-4H 人工裁决后的数据审计状态
+
+用户接受C01/C02同源关系并明确只评为Strongly Supported；C01、C02各合并两组。B01/B02视觉桥得到人工接受，保留原有完整component，**对应边**升为Strongly Supported；S01–S10全部接受，仍为Strongly Supported，均不宣称物理采集身份Confirmed。生成器从原ZIP、Stage 2B-3清单和[裁决输入](../IOR-YOLO/configs/data/d2_source_group_adjudications.json)重建出**1406个非resize表示、1112个候选组、67个跨官方split组（204张表示）**。67个命名家族现全为Strongly Supported；另有23条跨组dHash Candidate，来源风险未消失。图像/区域统计仍为2812张可解码图、2575个原始polygon、2574个有效三类标签和1个无类别region。
+
+三个不同名、跨split、SHA256完全相同的图像组维持**Confirmed duplicate**并必须同组；其polygon存在轻微差异，**annotation conflict = Unresolved**，不修改、平均或选一套为默认真值。R01–R03被人工认定为same-source companion，但valid deterministic resize equivalence仍Unresolved；**全部数据集提供的`_resize`表示不进入正式实验**，模型输入大小以后由训练管线动态处理。U01的`test/IMG_54350.jpg#3`判为invalid/unknown region，派生三类训练/评价标注不把它当有效目标；保留该图其余三个有效区域及整张图，原始JSON不变。派生标注尚未生成，评价器对未知区域的忽略语义仍需验证，不能把这一规则误述为已实现。
+
+**Freeze Gate仍未通过**：官方split确认泄漏且尚无正式替代；fruit/tree/session ID缺失，23条跨组候选关系未裁定；同图不同polygon的派生GT规则尚未定/验证；U01的评价实现未验证；来源侧1124/2573/2754等数字差异、视觉阶段与生理成熟的语义边界仍需在最终数据/论文协议中处理。用户已决定排除dataset-provided resize，这解决输入表示选择，但没有证明那三对异常的生成机制。**D2 = NOT FROZEN；未生成正式split、未选seed、未进入Stage 2B-5。**

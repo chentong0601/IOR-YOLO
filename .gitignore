@@ -81,6 +81,8 @@ token.json
 /tensorboard/
 /IOR-YOLO/reports/predictions/**
 /IOR-YOLO/reports/failure_cases/**
+# Local review HTML embeds original dataset image bytes.
+/IOR-YOLO/reports/dataset_audit/human_review/**
 /predictions/**
 /outputs/**
 
