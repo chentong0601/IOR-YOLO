@@ -4,6 +4,8 @@
 
 **Stage 2B-4H说明**：下文100-seed及后附500×2模拟数字均来自**裁决前1114组图**，只作历史协议设计证据。人工裁决后当前图为**1112组**；尚未以新图重跑模拟，未选比例或seed，也未进入Stage 2B-5。用户已决定正式实验排除全部dataset-provided `_resize` 表示，输入尺寸由训练管线动态处理；其余评价图像选择与正式split尚未冻结。
 
+**Stage 2B-5P更新**：现已用1112组、1096个guard clusters及1099张候选图做两种比例的**单次确定性模拟**；结果和最新候选规则请转读[split constraint design](split-constraint-design-d2.md)。本页原有100/500-seed数字仍仅代表历史1114组图，未据此选正式比例或seed。
+
 ## 拟议原则
 
 1. 单位为 `source_group_id`，同组所有非 resize 图像必须进入同一集合。每张 `_resize` 与同名 original 绑定，不能独立划分。已知 3 对异常 resize 保留“同名伴随、关系 Unresolved”标记，正式使用前需处理。

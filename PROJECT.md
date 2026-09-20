@@ -8,11 +8,11 @@
 
 ## Current Stage
 
-**Stage 2 — Dataset Acquisition & Audit**。
+**Stage 2B-5 — D2 Dataset Protocol & Group-Aware Split Freeze 已完成**；尚未进入E01 Baseline。
 
-Stage 1与Stage 2A Dataset Feasibility Gate已通过。**Stage 2B-4H — Human Adjudication 已完成并记录**；21案人工决定见[复核表](docs/human-review-stage2b4.md)，据C01/C02重建了候选source groups。**未进入 Stage 2B-5**。官方split已确认泄漏；正式评价划分尚未建立，完整Stage 2未完成。
+Stage 1与Stage 2A Dataset Feasibility Gate已通过。2B-5P候选方案经用户审核确认，已按[正式冻结协议](docs/dataset-freeze-d2.md)完成两次确定性重建与验证。Stage 2B-4H的21案人工决定及1112个evidence-based source groups继续有效。官方split已确认泄漏，不可用于正式评价；现已冻结guard-aware 70/15/15划分。
 
-项目起点为科研工程空白：目录与Research Skill System已经建立；D2原包已完成本轮只读数据审计，但尚无正式划分、Baseline实现、训练或实验结果。目录及预留E00–E10不代表完成任何实验。
+项目起点为科研工程空白：目录与Research Skill System已经建立；D2原包已审计且有正式manifest与split，但仍无Baseline实现、训练或实验结果。目录及预留E00–E10不代表完成任何实验。
 
 ## Research Question
 
@@ -42,11 +42,13 @@ Modify是助手基于文献的评估，不是已经实现或验证的新模型�
 
 ## Dataset Status
 
-**Not Frozen**。D2仍是Primary Dataset Candidate；D3为条件性External候选，D1为Secondary。D2的2812张图均完整解码；非resize的1406张含2575个polygon，其中2574有三类有效标签，test一条类别缺失。**另有3组跨split字节完全相同图像，确认官方split泄漏**。裁决前Stage 2B-4图为**1114个候选source groups、65组跨官方split**，命名家族65强支持/2候选；旧1107/67为更宽松的初步图。1403对original/resize相似度高，3对异常。**现行裁决后数字见下段**。详见[同源组解析](docs/source-group-resolution-d2.md)、[划分协议模拟](docs/split-protocol-d2.md)和[原包审计](docs/dataset-audit-d2.md)。
+**D2 Dataset Protocol = FROZEN；D2 Split = FROZEN**，仅适用于固定ZIP上的当前视觉三阶段任务。正式池1099张，train/val/test为769/165/165；详见[正式冻结协议](docs/dataset-freeze-d2.md)。D3仍为条件性External候选，D1为Secondary。D2的2812张图均完整解码；非resize的1406张含2575个polygon，其中2574有三类有效标签，test一条类别缺失。**另有3组跨官方split字节完全相同图像，确认官方split泄漏**。下述早期计数是历史审计，不是当前正式split。详见[同源组解析](docs/source-group-resolution-d2.md)、[划分协议模拟](docs/split-protocol-d2.md)和[原包审计](docs/dataset-audit-d2.md)。
 
 Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conservative / Current / Worst-Case 为 **1120 / 1114 / 1096** 组。1000 次当前协议模拟均保持 Confirmed/Strongly Supported/Supported 零跨集，但 Candidate 边仍会被切断，且缺少果实/树/场次 ID。该验证**不构成 Dataset Freeze**；见[审核包](docs/review-packet-stage2b4.md)。
 
-**当前Stage 2B-4H裁决后**：C01/C02两对接受同源并由Candidate升为Strongly Supported；B01/B02桥边接受、保留完整原组并升为human-reviewed Strongly Supported；S01–S10保持原组/Strongly Supported。程序重建为**1112个候选source groups，67组跨官方split、涉及204张非resize表示**；67个跨集命名家族均为Strongly Supported，但23条跨组dHash Candidate与采集ID缺失仍在。上述1114及1000次模拟为**裁决前图**的历史结果，不能套用到新图。D01–D03仍是Confirmed图像重复且标注冲突Unresolved；R01–R03是same-source companion但确定性resize等价Unresolved。正式实验排除全部dataset-provided resize，输入尺寸由训练管线动态resize。U01无类别polygon在派生三类监督中无效，保留原图及其他三个有效region；实现尚未验证。D2继续**Not Frozen**。
+**Stage 2B-4H裁决后的历史状态**：C01/C02两对接受同源并由Candidate升为Strongly Supported；B01/B02桥边接受、保留完整原组并升为human-reviewed Strongly Supported；S01–S10保持原组/Strongly Supported。程序重建为**1112个候选source groups，67组跨官方split、涉及204张非resize表示**；67个跨集命名家族均为Strongly Supported，但23条跨组dHash Candidate与采集ID缺失仍在。上述1114及1000次模拟为**裁决前图**的历史结果，不能套用到新图。D01–D03仍是Confirmed图像重复且标注冲突Unresolved；R01–R03是same-source companion但确定性resize等价Unresolved。该段当时D2 Not Frozen；当前冻结状态见本节首段。
+
+**Stage 2B-5P历史候选设计**：1112个source groups经23条跨组dHash Candidate和另6条命名Candidate的预防性约束形成**1096个split guard clusters**；guard不证明同源。非resize的1119张plain、170张brightness、117张noise中，6个组没有plain/base表示。每个有base组确定性留一个代表，发现同字节不同polygon共**10条SHA关系、7个source groups**（包括D01–D03）；严格Policy B暂存这7组，得到**1099张图**的canonical experiment pool。来源侧数字冲突为固定包口径下的Documented source inconsistency，原因仍未知。候选时两比例模拟未存正式归属；正式结果改见[冻结协议](docs/dataset-freeze-d2.md)。
 
 ## Baseline Status
 
@@ -67,14 +69,14 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 ## Open Questions
 
 1. D2包内1406非resize图像与2575区域（2574有效类别）为何与外部1124/2573/2754等数字冲突？实际来源链如何解释？
-2. 已裁定2个命名Candidate家族和2条视觉桥后，如何处理23对仍跨组的dHash Candidate、同字节不同polygon的派生GT，并建立足够可信的group-aware评价方案？缺少fruit/tree/session ID带来何种主张边界？三对resize虽已决定排除，来源机制仍未知。
+2. 29条跨组Candidate已加候选guard约束但尚无物理采集身份；如何确认严格Policy B、6个无base组的处理和7个标注冲突组的派生GT？缺少fruit/tree/session ID带来何种主张边界？三对resize虽已决定排除，来源机制仍未知。
 3. 基线主要失败来自定位、标签歧义、跨级判断还是光照？
 4. 天然光照分组与外部标签兼容性是否足以支撑泛化主张？
 5. D3原始两来源的再利用许可与Kaggle打包许可是否一致，能否恢复fruit/tree/date/sequence分组？
 
 ## Risks
 
-颜色被当作生理真值；**D2官方split已有确认的跨集重复**，且相同图像的polygon并不总一致；test一条无类别区域、三对original/resize内容/坐标异常；fruit/tree/session分组未知。D2的1124/1406、2573/2574/2754及比例差异未解释。D3同果多视角与SfM重叠、二类外部标签强映射、合成扰动替代真实光照泛化亦为后续风险。详见[原包审计](docs/dataset-audit-d2.md)。
+颜色被当作生理真值；**D2官方split已有确认的跨集重复**，且相同图像的polygon并不总一致（现识别10条SHA冲突关系/7组）；test一条无类别区域、三对original/resize内容/坐标异常；fruit/tree/session分组未知。D2的1124/1406、2573/2574/2754及比例差异未解释。D3同果多视角与SfM重叠、二类外部标签强映射、合成扰动替代真实光照泛化亦为后续风险。详见[原包审计](docs/dataset-audit-d2.md)。
 
 ## Decisions
 
@@ -89,6 +91,8 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 - 用户授权Stage 2B-4同源组解析与协议设计；已生成可复算候选source groups及100 seed × 两比例模拟。方案**Simulation Only / Not Frozen**，未创建正式split，需复核Candidate关系、评价图像选择及Unknown region处理后才可作正式决定。
 - 用户授权Stage 2B-4V独立复核；已从原包重建图、压力测试阈值及500×2次模拟，并登记两条视觉桥边和仍未解决的来源风险。未授权、也未进入Stage 2B-5；D2仍Not Frozen。
 - 用户已完成Stage 2B-4H的21案人工裁决。C01/C02合组，B01/B02及S01–S10接受，D01–D03保留标注冲突，R01–R03排除dataset-provided resize，U01仅将未知区域排除出派生有效三类目标。已重建候选source groups；Raw Data与正式split未改变，D2仍Not Frozen。
+- 用户授权Stage 2B-5P仅准备可冻结候选协议。已构建独立于source group的guard clusters、候选representation manifest与单次确定性模拟；严格Policy B及无base组处置是助手建议，**尚非用户确认的最终Freeze决定**。未产生正式split或选择最终seed。
+- 用户随后明确确认Stage 2B-5：严格Policy B、6无base组排除、U01普通背景FP语义、70/15/15、SHA+固定上下文seed以及guard cluster划分规则。已生成冻结manifest并通过两次逐字节重建及关系检查，**D2协议与划分FROZEN**；此前2B-5P条目保留为当时状态。
 
 ## Rejected Ideas
 
@@ -96,4 +100,4 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 
 ## Next Actions
 
-本轮停在[Stage 2B-4H人工裁决记录](docs/human-review-stage2b4.md)。后续仍需解决跨组候选与采集分组、同字节不同polygon的派生GT、U01评价忽略语义及最终评价图像去离线增强原则，之后才可能审查正式划分。**未生成或冻结split，不运行Baseline、不进入Stage 2B-5**。D3仍需补许可链。D2 Not Frozen。
+本轮停在[Stage 2B-5正式冻结](docs/dataset-freeze-d2.md)，不自动进入下一阶段。下一步可准备E01 Baseline环境和实际evaluator对U01的端到端核验，再决定Baseline recipe与可见训练命令；模型训练尚未开始。研究结论必须保留没有fruit/tree/session ID和来源文字冲突的局限。D3仍需补许可链。

@@ -4,6 +4,8 @@
 
 **当前补注（2026-09-20，Stage 2B-4H）**：下文分阶段保留原始审计与裁决前1114组快照；用户人工裁决后最新source-group清单为**1112组**。21案决定、关系分级与实验处置见[本页末尾补注](#stage-2b-4h-人工裁决后的数据审计状态)及[人工复核表](human-review-stage2b4.md)。原包和原始标注未变，D2仍NOT FROZEN。
 
+**Stage 2B-5P候选协议补注**：不更改原始审计与1112个source groups，新增[split guard与候选池](split-constraint-design-d2.md)和[Freeze Candidate Gate](dataset-freeze-candidate-d2.md)。本轮在全包同SHA标注检查中新增发现7条**同一官方split内**的polygon冲突关系；连同已知3条跨split关系，共10条，涉及7个source groups。下文早期“3组跨集标注冲突”仅指先前审核范围，不能视为全包冲突总数。Raw Data未修改，D2继续NOT FROZEN。
+
 ## 审计范围与复现
 
 - 原包：`IOR-YOLO/data/raw/multistage_apple_v4/dataset-20260508.zip`，290131787 bytes；SHA256 `049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce` 为用户首次验证记录，本次结构/内容审计未重新计算哈希。ZIP有2826个成员，不等于图像/实例数。
@@ -169,3 +171,15 @@ Stage 2B-2的**67个命名候选家族**按其最强跨split关系分级：**Con
 三个不同名、跨split、SHA256完全相同的图像组维持**Confirmed duplicate**并必须同组；其polygon存在轻微差异，**annotation conflict = Unresolved**，不修改、平均或选一套为默认真值。R01–R03被人工认定为same-source companion，但valid deterministic resize equivalence仍Unresolved；**全部数据集提供的`_resize`表示不进入正式实验**，模型输入大小以后由训练管线动态处理。U01的`test/IMG_54350.jpg#3`判为invalid/unknown region，派生三类训练/评价标注不把它当有效目标；保留该图其余三个有效区域及整张图，原始JSON不变。派生标注尚未生成，评价器对未知区域的忽略语义仍需验证，不能把这一规则误述为已实现。
 
 **Freeze Gate仍未通过**：官方split确认泄漏且尚无正式替代；fruit/tree/session ID缺失，23条跨组候选关系未裁定；同图不同polygon的派生GT规则尚未定/验证；U01的评价实现未验证；来源侧1124/2573/2754等数字差异、视觉阶段与生理成熟的语义边界仍需在最终数据/论文协议中处理。用户已决定排除dataset-provided resize，这解决输入表示选择，但没有证明那三对异常的生成机制。**D2 = NOT FROZEN；未生成正式split、未选seed、未进入Stage 2B-5。**
+
+## Stage 2B-5P 候选协议补充审计
+
+按全部1406张非resize的SHA与原始JSON确定性检查，确认同字节不同polygon的**10条SHA重复关系/7个source groups**：原有D01–D03为3条跨官方split关系，新增7条在同一官方split。其region数与类别序列在每对中一致，polygon几何不同，原因未查明。候选Policy B将这7组暂从训练与评价池排除，不改Raw Data、不按文件名暗选真值；它是**待确认的协议建议**。候选池不使用1406张dataset-provided resize；非resize中plain/base 1119、brightness 170、noise 117；6个source groups无明显base，已明确登记fallback但暂不启用。每个有base组只留一个稳定代表，再暂存7个冲突组，得到**1099张候选图**。详见[候选池逐行记录](../IOR-YOLO/data/manifests/d2_experiment_pool_candidate.csv)。
+
+23条跨source-group dHash Candidate及另外6条跨组命名Candidate不修改source group，而进入1096个[split guard clusters](../IOR-YOLO/data/manifests/split_guard_clusters.csv)的预防性约束。已列关系在两次**单seed候选模拟**中均零跨模拟split；这不证明未知采集关系不存在，也不等于已建立正式split。U01模型无关评价探针显示：保留3个合法目标并不自动消除#3处预测，标准无ignore规则会把该处苹果预测计为FP；真实框架和语义仍需进一步验证。来源侧1124/2573/2754冲突的原因仍不明，但固定ZIP的1406/2575/2574/1计数已可复算，故将其作为**Documented source inconsistency**，不再单独作为阻断实验准备的硬条件。**D2 NOT FROZEN；未进入正式Stage 2B-5 Freeze。**
+
+## Stage 2B-5 正式冻结审计（覆盖上文各阶段当时的“NOT FROZEN”状态）
+
+用户正式确认candidate guard、严格Policy B、6无base组排除、全部离线增强及dataset-provided resize排除、U01三有效目标加普通背景FP规则，以及70/15/15与固定ZIP+上下文seed。两次独立构建从不变原包重建出的[协议和manifest](dataset-freeze-d2.md)逐字节一致。全图关系形成1112个source groups与1096个guard clusters；正式池1099图、1099有图组、1088有图guard clusters；split图数769/165/165，三类有效实例总数915/425/732。1713条表示排除逐行留存，其中冲突组7个、无base组6个全部排除；来源文字数字仍属Documented Source Inconsistency。
+
+正式split内精确重复、evidence-based group、guard cluster和已登记Candidate边均零跨集；关系中两端均入池8条同split，451条至少一端排除。U01派生函数从4个raw region精确保留3个有效目标，raw JSON未变；YOLO evaluator实际集成仍需Baseline环境复验普通FP行为。**D2 Dataset Protocol与D2 Split = FROZEN**，不能从中推出未知fruit/tree/session独立性，也不能沿用官方泄漏split。参见正式文档的校验、SHA和局限。

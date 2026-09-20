@@ -1,0 +1,36 @@
+# D2 frozen protocol; generated deterministically, do not edit in place.
+dataset_doi: "10.17632/gfcmdbvw65.4"
+dataset_version: "v4"
+zip_filename: "dataset-20260508.zip"
+zip_size_bytes: 290131787
+zip_sha256: "049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce"
+protocol_version: "d2-v4-stage2b5-v1"
+generator_version: "12_freeze_d2_protocol.py@1 + 10_prepare_d2_freeze_candidate.py@1"
+generator_sha256: "a587d1d3cf826ec476fe91356f472b4a1a2b78eca51376c392fc16846b825caf"
+supporting_generator_sha256: "27fc0abb79bdd3b8b2d51597d72773fc305014f4107b6c2004cf1a850557d3d0"
+git_head: "1db875a1eb10d95d654d0f2d27a52815794db0d8"
+split_seed_64: 13436313853456744620
+split_seed_32: 3589472428
+split_seed_formula: "first_64_bits_be(SHA256(bytes.fromhex(zip_sha256) || ASCII(seed_context)))"
+seed_32_formula: "seed_64 & 0xffffffff (only if a future dependency requires 32-bit)"
+seed_context: "IOR-YOLO/D2/Stage2B-5P/guard-greedy-v1"
+split_ratio: "70/15/15"
+split_unit: "split_guard_cluster"
+assignment_algorithm: "10_prepare_d2_freeze_candidate.py@1 assign_clusters; largest first, seeded tie order, lexicographic global L1 images/classes/multiclass/clusters"
+source_group_semantics: "evidence-based grouping, not independent physical acquisition"
+representation_policy: "one plain original per evidence source group; no dataset resize/offline augmentation; pipeline online only"
+annotation_policy: "valid three-class raw regions; U01 drop raw region #3; standard background/FP; no ignore region"
+class_mapping: {"0": "immature apple", "1": "semi-mature apple", "2": "mature apple"}
+all_source_groups: 1112
+all_guard_clusters: 1096
+pool_images: 1099
+pool_source_groups: 1099
+pool_guard_clusters: 1088
+split_statistics: {"train": {"images": 769, "source_groups": 769, "guard_clusters": 758, "immature": 646, "semi_mature": 297, "mature": 512, "multi_class_images": 71}, "val": {"images": 165, "source_groups": 165, "guard_clusters": 165, "immature": 143, "semi_mature": 65, "mature": 115, "multi_class_images": 16}, "test": {"images": 165, "source_groups": 165, "guard_clusters": 165, "immature": 126, "semi_mature": 63, "mature": 105, "multi_class_images": 18}}
+exclusion_counts: {"alternate_same_source_base": 6, "annotation_conflict_group_holdout": 14, "dataset_offline_augmentation": 279, "dataset_provided_resize": 1406, "no_base_fallback_requires_review": 8}
+relation_crossings: {"Confirmed": 0, "Strongly Supported": 0, "Supported": 0, "Candidate": 0, "Unresolved": 0}
+source_groups_sha256: "3635f3c52b9ca266142a207d54cdc6981773c9cc5e7ec75642e6a503745a769a"
+relations_sha256: "4ee357205f0beac3d52b0f3af705306dcbe7b3e59e4af9f6f6bacdc62b9da2c0"
+frozen_csv_sha256: {"d2_experiment_pool_frozen.csv": "a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5", "d2_split_frozen.csv": "0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1", "d2_exclusions_frozen.csv": "92d31b4cd351e6392227d29af331efc174b623d56f98c5fb096e93a4130be20e"}
+raw_annotation_policy_note: "ZIP JSON unchanged; derived targets are the valid regions referenced by CSV counts; U01 skips zero-based region 3"
+evaluation_limit: "No fruit/tree/session acquisition IDs; actual YOLO evaluator integration deferred to Baseline setup"
