@@ -5,6 +5,8 @@ experiment_id: e01_yolo11n_seg
 status: not_started
 git_commit: null
 git_dirty: null
+experiment_relevant_git_dirty: null
+git_status_porcelain: null
 experiment_config_sha256: null
 resolved_config_sha256: null
 timestamp_start_utc: null
@@ -26,6 +28,9 @@ protocol_yaml_sha256: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d
 derived_dataset_yaml: null
 model: yolo11n-seg.pt
 pretrained_weights_sha256: null
+pretrained_weights_filename: null
+pretrained_weights_source: null
+pretrained_weights_mtime_utc: null
 best_checkpoint_sha256: null
 last_checkpoint_sha256: null
 task: segment

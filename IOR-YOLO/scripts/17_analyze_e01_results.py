@@ -64,8 +64,8 @@ def provenance(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> list
                 "dataset_zip_sha256", "frozen_pool_sha256", "frozen_split_sha256",
                 "protocol_yaml_sha256", "best_checkpoint_sha256", "resolved_config_sha256")
     issues = [f"missing {key}" for key in required if manifest.get(key) is None or manifest.get(key) == ""]
-    if manifest.get("git_dirty") is not False:
-        issues.append("git checkout not recorded clean")
+    if manifest.get("experiment_relevant_git_dirty") is not False:
+        issues.append("E01-relevant Git paths not recorded clean")
     if manifest.get("ultralytics") != "8.3.220" or manifest.get("training_seed") != 0:
         issues.append("pinned Ultralytics/training seed disagreement")
     checks = {

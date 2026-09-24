@@ -15,6 +15,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +27,21 @@ CONFIG = ROOT / "configs/experiments/e01_yolo11n_seg.yaml"
 TEMPLATE = ROOT / "configs/experiments/run_manifest_template.yaml"
 DATASET = ROOT / "data/processed/d2_e01_ultralytics"
 RUN_DIR = ROOT / "runs/e01_yolo11n_seg/seed_0"
+E01_GIT_PATHS = (
+    "IOR-YOLO/configs/data/d2_frozen_protocol.yaml",
+    "IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml",
+    "IOR-YOLO/configs/experiments/run_manifest_template.yaml",
+    "IOR-YOLO/data/manifests/d2_experiment_pool_frozen.csv",
+    "IOR-YOLO/data/manifests/d2_split_frozen.csv",
+    "IOR-YOLO/data/manifests/d2_exclusions_frozen.csv",
+    "IOR-YOLO/requirements-e01.txt",
+    "IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py",
+    "IOR-YOLO/scripts/14_check_training_environment.py",
+    "IOR-YOLO/scripts/15_e01_run.py",
+    "IOR-YOLO/scripts/16_resolve_e01_config.py",
+    "IOR-YOLO/scripts/17_analyze_e01_results.py",
+    "IOR-YOLO/scripts/18_export_e01_predictions.py",
+)
 spec = importlib.util.spec_from_file_location("e01_dataset", Path(__file__).with_name("13_build_e01_ultralytics_dataset.py"))
 dataset = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dataset)
@@ -76,11 +92,53 @@ def preflight(*, require_cuda: bool = False) -> dict:
             "dataset_yaml": str((DATASET / "dataset.yaml").resolve())}
 
 
-def git_state() -> tuple[str, bool]:
+def git_state() -> dict:
     head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT.parent, capture_output=True, text=True, check=True).stdout.strip()
-    dirty = bool(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT.parent,
-                                capture_output=True, text=True, check=True).stdout.strip())
-    return head, dirty
+    status = subprocess.run(["git", "status", "--porcelain=v1", "--untracked-files=all"], cwd=ROOT.parent,
+                            capture_output=True, text=True, check=True).stdout.splitlines()
+    relevant = subprocess.run(["git", "status", "--porcelain=v1", "--untracked-files=all", "--", *E01_GIT_PATHS],
+                              cwd=ROOT.parent, capture_output=True, text=True, check=True).stdout.splitlines()
+    return {"head": head, "dirty": bool(status), "status": status,
+            "experiment_relevant_dirty": bool(relevant), "experiment_relevant_status": relevant}
+
+
+def pretrained_weight_record(model=None) -> tuple[object, dict]:
+    from ultralytics import YOLO
+    model = model or YOLO(load_config()["model"])
+    path = Path(getattr(model, "ckpt_path", "") or "")
+    if not path.is_file():
+        raise RuntimeError("official YOLO11n-seg pretrained checkpoint is unavailable; stop without random initialization")
+    return model, {"filename": path.name,
+                   "source": "Ultralytics official yolo11n-seg.pt loaded by ultralytics==8.3.220",
+                   "sha256": sha(path),
+                   "mtime_utc": datetime.fromtimestamp(path.stat().st_mtime, timezone.utc).isoformat(),
+                   "local_path": str(path.resolve())}
+
+
+def verify_weights() -> dict:
+    preflight(require_cuda=True)
+    _, record = pretrained_weight_record()
+    return {"status": "official_pretrained_weight_verified", **record}
+
+
+def smoke(*, batch: int = 8, oom_note: str | None = None) -> dict:
+    """Run a disposable one-epoch/tiny-fraction CUDA feasibility check, never a formal result."""
+    ready = preflight(require_cuda=True)
+    if batch not in (8, 4) or (batch == 4) != bool(oom_note):
+        raise ValueError("smoke uses batch 8; batch 4 requires the prior batch-8 CUDA OOM note")
+    state = git_state()
+    if state["experiment_relevant_dirty"]:
+        raise RuntimeError(f"E01-relevant Git files are uncommitted: {state['experiment_relevant_status']}")
+    model, weights = pretrained_weight_record()
+    config = load_config()
+    args = {key: value for key, value in config["train"].items() if key != "augmentation"}
+    args.update(config["train"]["augmentation"])
+    args.update(data=ready["dataset_yaml"], device=0, batch=batch, epochs=1, fraction=0.02,
+                workers=0, val=False, save=False, plots=False)
+    with tempfile.TemporaryDirectory(prefix="e01-cuda-smoke-") as temp:
+        model.train(**args, project=temp, name="batch_feasibility", exist_ok=False)
+    return {"status": "CUDA smoke passed; not a formal experiment", "batch": batch,
+            "oom_note": oom_note, "pretrained_weight": weights}
 
 
 def write_manifest(value: dict) -> None:
@@ -111,13 +169,14 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
     config = load_config()
     if (batch_override == 4) != bool(oom_note):
         raise ValueError("batch 4 requires a pretraining CUDA OOM note; no note permitted without fallback")
-    head, dirty = git_state()
-    if dirty:
-        raise RuntimeError("formal E01 requires a clean Git checkout so code/config are attributable to one commit")
+    state = git_state()
+    if state["experiment_relevant_dirty"]:
+        raise RuntimeError(f"E01-relevant Git files are uncommitted: {state['experiment_relevant_status']}")
     if RUN_DIR.exists():
         raise FileExistsError(f"formal E01 run already exists; no overwrite: {RUN_DIR}")
-    from ultralytics import YOLO
-
+    # Weight acquisition/verification is a preflight operation. If it fails,
+    # stop without creating a formal-run snapshot or falling back to random initialization.
+    model, weight_record = pretrained_weight_record()
     # Persist the requested/default/resolved preflight state BEFORE training.
     pretrain_path = RUN_DIR.parent / "seed_0_resolved_train_config.yaml"
     if pretrain_path.exists():
@@ -127,11 +186,6 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
         resolved["hardware_oom_note"] = oom_note
     resolver.save(pretrain_path, resolved)
     started = datetime.now(timezone.utc).isoformat()
-    model = YOLO(config["model"])
-    weight_path = Path(getattr(model, "ckpt_path", "") or "")
-    if not weight_path.is_file():
-        raise RuntimeError("official pretrained checkpoint is not available")
-    original_weight_sha = sha(weight_path)
     args = {key: value for key, value in config["train"].items() if key != "augmentation"}
     args.update(config["train"]["augmentation"])
     if batch_override == 4:
@@ -169,7 +223,9 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
                                  text=True, check=True).stdout
     (RUN_DIR / "pip-freeze.txt").write_text(freeze_text, encoding="utf-8", newline="\n")
     manifest.update(run_id=f"e01_seed0_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
-                    status="trained_not_final_tested", git_commit=head, git_dirty=dirty,
+                    status="trained_not_final_tested", git_commit=state["head"], git_dirty=state["dirty"],
+                    experiment_relevant_git_dirty=state["experiment_relevant_dirty"],
+                    git_status_porcelain=state["status"],
                     experiment_config_sha256=sha(CONFIG),
                     resolved_config_sha256=sha(RUN_DIR / "resolved_train_config.yaml"),
                     timestamp_start_utc=started, timestamp_end_utc=datetime.now(timezone.utc).isoformat(),
@@ -177,7 +233,10 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
                     pytorch=env["torch"], torchvision=env["torchvision"],
                     ultralytics=env["ultralytics"], cuda_runtime=env["cuda_runtime"],
                     gpu=env["gpu_name"], gpu_memory_bytes=env["gpu_memory_bytes"],
-                    derived_dataset_yaml=ready["dataset_yaml"], pretrained_weights_sha256=original_weight_sha,
+                    derived_dataset_yaml=ready["dataset_yaml"], pretrained_weights_sha256=weight_record["sha256"],
+                    pretrained_weights_filename=weight_record["filename"],
+                    pretrained_weights_source=weight_record["source"],
+                    pretrained_weights_mtime_utc=weight_record["mtime_utc"],
                     best_checkpoint_sha256=sha(RUN_DIR / "weights/best.pt"),
                     last_checkpoint_sha256=sha(RUN_DIR / "weights/last.pt"),
                     effective_optimizer=type(optimizer).__name__,
@@ -233,16 +292,18 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("preflight", "train", "val", "test"))
+    parser.add_argument("command", choices=("preflight", "verify-weights", "smoke", "train", "val", "test"))
     parser.add_argument("--require-cuda", action="store_true", help="enforce Windows RTX 3070 also for preflight")
     parser.add_argument("--batch", type=int, choices=(4, 8), default=8,
-                        help="formal train only: 4 requires documented pretraining CUDA OOM")
+                        help="smoke/train: 4 requires documented prior batch-8 CUDA OOM")
     parser.add_argument("--oom-note", help="pretraining OOM evidence/reason when using batch 4")
     parser.add_argument("--final-test", action="store_true", help="explicitly unlock the one-time final test")
     args = parser.parse_args()
     if args.final_test and args.command != "test":
         parser.error("--final-test only applies to test")
     result = (preflight(require_cuda=args.require_cuda) if args.command == "preflight" else
+              verify_weights() if args.command == "verify-weights" else
+              smoke(batch=args.batch, oom_note=args.oom_note) if args.command == "smoke" else
               train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note)
               if args.command == "train" else evaluate(args.command, final_test=args.final_test))
     print(json.dumps(result, ensure_ascii=False, indent=2))

@@ -37,6 +37,8 @@ Train用于拟合；Val用于训练监控、early stopping及确定最终best ch
 
 [run manifest模板](../IOR-YOLO/configs/experiments/run_manifest_template.yaml)包括Git提交/dirty状态、主机/OS、Python/Torch/Ultralytics/CUDA/GPU、固定数据SHA、模型与权重SHA、seed、训练/增强实际参数、best/last、box/mask验证与测试指标、输出目录及备注。正式输出在Git忽略的`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`；训练结束以框架`args.yaml`记录真实配置，后续按需将小型summary和论文表格版本化。生成器/runner仅使用repo-relative定位及`pathlib`，可在Mac和Windows运行。
 
+Stage 3C执行冻结后，官方`yolo11n-seg.pt`仅作初始化权重；工作站获取失败必须停止，不得改用随机初始化。权重文件名、Ultralytics来源/版本、SHA256及文件时间在训练前核验，正式manifest再次记录。正式训练要求E01脚本、配置、requirements和冻结manifest均来自已提交HEAD；用户明确知道的无关工作区变化可以存在并记录，但E01相关路径有未提交内容时拒绝启动。Windows只接收固定raw ZIP并核验SHA，派生集必须现场重建。完整交接次序见[工作站清单](e01-workstation-checklist.md)。
+
 实际验证（2026-09-20）：两次临时目录重建的派生文件逐SHA一致；Mac上的Ultralytics 8.3.220官方`YOLODataset`依次加载train/val/test **769/165/165**图、**1455/323/294**个目标，无background或corrupt记录，YAML解析类别0/1/2准确。`yolo11n-seg.yaml`在Mac Python3.12.14、Torch2.5.1下完成构建及一次64×64合成CPU前向；MPS可用，但没有运行MPS训练，也没有下载预训练权重。27项项目低成本测试通过。Mac的Python3.12 smoke只证明开发环境兼容，**不替代正式Windows Python3.11+CUDA的现场预检**。
 
 Stage 3A Gate：A–G（冻结数据、确定性派生、格式/类别/计数、已列关系隔离、U01派生标签）已验证；H–J（唯一主模型/固定配置、训练seed、在线增强）已固定；K（Windows环境）已有版本化安装步骤和必须通过的现场CUDA检查，**实际RTX 3070尚未到手，现场结果待执行**；L–N（run manifest、命令、最终test纪律）已备。`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`将保存Ultralytics原生`weights/`、`args.yaml`、`results.csv`和图表，入口脚本另准备`metrics/`、`predictions/`、`figures/`及`run_manifest.yaml`；整个目录被Git忽略。

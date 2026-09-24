@@ -129,6 +129,7 @@ class E01AnalysisTests(unittest.TestCase):
                 "resolved_config_sha256":run/"resolved_train_config.yaml",
             }
             record={"run_id":"synthetic-test-only","git_commit":"012345", "git_dirty":False,
+                    "experiment_relevant_git_dirty":False,
                     "python":"3.11","pytorch":"2.5.1","ultralytics":"8.3.220","training_seed":0}
             for field,path in paths.items():
                 path.parent.mkdir(parents=True,exist_ok=True)
