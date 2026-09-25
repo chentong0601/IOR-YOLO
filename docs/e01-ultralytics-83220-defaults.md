@@ -5,7 +5,7 @@
 | 参数 | 8.3.220 default.yaml | E01显式请求 | 分类与实际含义 |
 |---|---:|---:|---|
 | epochs | 100 | 100 | 显式重复默认；训练epoch**上限** |
-| batch | 16 | **8** | **RTX 3070显存约束**，不是默认或性能择优 |
+| batch | 16 | **8** | **冻结的E01训练预算**，不是默认或性能择优 |
 | imgsz | 640 | 640 | 显式重复默认 |
 | optimizer | **auto** | **auto** | 显式重复默认；实际优化器须记录trainer决策 |
 | lr0 | 0.01 | 0.01 | 显式重复默认；**auto会忽略请求值** |
@@ -20,7 +20,7 @@
 | close_mosaic | 10 | 10 | 显式重复默认 |
 | amp | true | true | 显式重复默认 |
 | deterministic | true | true | 显式重复默认 |
-| workers | 8 | **4** | **Windows/RTX 3070硬件特定覆盖** |
+| workers | 8 | **4** | **既有E01数据加载设置**；作为实际resolved config记录 |
 | nbs | 64 | 未显式指定 | 使用包默认；影响auto所依据的预计迭代数 |
 
 | Segmentation增强 | 8.3.220默认 | E01请求 | 来源 |
@@ -34,7 +34,7 @@
 
 **Optimizer A/B核验**：最初候选`SGD, lr0=.01`是有意显式指定、**不是8.3.220官方默认行为**。A方案`auto`保留官方标准机制；B方案SGD固定优化器和学习率，便于跨运行直接比较，但会改变包的标准optimizer选择。尚无论文问题或资源证据要求这种偏离，因此用户提出的中性基线原则下，E01正式采用**A：optimizer=auto**。`build_optimizer`在`auto`时依据`iterations > 10000`选择SGD(0.01, momentum .9)，否则选AdamW(`round(.002*5/(4+nc),6)`, momentum .9)；两者都忽略请求的`lr0=.01`与`momentum=.937`，并把`warmup_bias_lr`设为0。以当前1099池中769张train、batch8、nbs64、100 epochs静态推算`ceil(769/64)*100=1300`，预计AdamW、实际初始LR **.001429**。这仅是**trainer源码投影**；正式run必须记录`model.trainer.optimizer`类型、`optimizer.defaults['lr']`、`trainer.args.warmup_bias_lr`和实际`args.yaml`，不得把投影写成实验事实。
 
-**Batch规则**：batch8是训练前对RTX 3070显存的保守选择；工作站预检若可运行则维持8。若正式训练**之前**的短smoke明确CUDA OOM，只允许`8→4`，在运行命令显式传`--batch 4 --oom-note "…"`，会写入预训练resolved配置和run manifest；不运行8/12/16比较，更不按mAP选batch。若batch4仍失败，停止并重新设计/版本化预算，不静默改变配置。
+**Batch规则**：batch8已经冻结；Kaggle正式训练**之前**的短CUDA smoke若明确OOM，只允许`8→4`，在运行命令显式传`--batch 4 --oom-note "…"`，会写入预训练resolved配置和run manifest；不运行多个batch比较，更不按mAP选batch。若batch4仍失败，停止并重新设计/版本化预算，不静默改变配置。
 
 `patience=100`与`epochs=100`意味着100是最高预算；训练中的Val fitness用于选择`best.pt`，`save_model`在当前fitness等于最佳fitness时保存。最终Test不能影响epoch或best选择。若因early stopping、异常或设备中断导致实际epoch少于100，按`results.csv`和checkpoint记录实际值；不能写成完成了100轮。
 

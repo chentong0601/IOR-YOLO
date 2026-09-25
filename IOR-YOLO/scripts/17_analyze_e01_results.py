@@ -11,6 +11,7 @@ import csv
 import hashlib
 import json
 import math
+import os
 import shutil
 import warnings
 from collections import Counter
@@ -20,7 +21,8 @@ import yaml
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RUN = ROOT / "runs/e01_yolo11n_seg/seed_0"
+RUNS_ROOT = Path(os.environ.get("E01_RUNS_ROOT", ROOT / "runs")).expanduser().resolve()
+DEFAULT_RUN = RUNS_ROOT / "e01_yolo11n_seg/seed_0"
 DEFAULT_DATA = ROOT / "data/processed/d2_e01_ultralytics"
 CLASSES = ("immature apple", "semi-mature apple", "mature apple")
 PRED_FIELDS = ("image_id", "pred_instance_id", "pred_class", "confidence", "box",

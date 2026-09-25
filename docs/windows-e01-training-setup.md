@@ -1,6 +1,6 @@
-# E01 Windows RTX 3070 frozen handoff
+# E01 Windows RTX 3070 fallback handoff
 
-目标平台为Windows工作站RTX 3070。以下命令在**PowerShell**中从仓库根目录执行。机器执行清单见[工作站 checklist](e01-workstation-checklist.md)。本页顺序已经冻结；任一步失败即停止，不自动越过第10步。
+Windows RTX 3070现为Kaggle不可用时的备用执行平台，不是当前选定的E01正式环境。以下命令在**PowerShell**中从仓库根目录执行。机器执行清单见[工作站 checklist](e01-workstation-checklist.md)。科研协议与Kaggle方案相同；任一步失败即停止，不自动越过第10步。
 
 1. 在工作站安装/更新NVIDIA驱动、Conda、Git和GitHub CLI；在PowerShell执行`nvidia-smi`，确认RTX 3070与可用显存。PyTorch CUDA 12.1 wheel自带对应运行时，不要求单独安装完整CUDA Toolkit；驱动仍须兼容。安装来源及对应torch/vision版本见[PyTorch官方历史安装表](https://docs.pytorch.org/get-started/previous-versions/)。如果`nvidia-smi`或后续CUDA检查失败，先解决驱动/环境，不运行E01。
 
@@ -20,7 +20,7 @@ git status --short
 git rev-parse HEAD
 ```
 
-3. **Step 2 — Python environment。** 创建Python 3.11 Conda环境并安装固定Windows CUDA wheel及依赖：
+3. **Step 2 — Python environment。** 以下Python3.11/cu121组合仅是旧Windows工作站的已审核备用profile，不是Kaggle必须版本。若真正启用该备用路径，创建Conda环境并安装：
 
 ```powershell
 conda create -n ior-e01 python=3.11 -y
@@ -34,7 +34,7 @@ python -m pip check
 4. **Step 3 — CUDA/GPU verification。** 验证Windows RTX 3070、CUDA及固定版本；检查不跑benchmark：
 
 ```powershell
-python IOR-YOLO/scripts/14_check_training_environment.py --require-cuda
+python IOR-YOLO/scripts/14_check_training_environment.py --require-cuda --platform windows
 ```
 
 5. **Step 4 — Raw ZIP verification。** 将同一D2原包放到`IOR-YOLO/data/raw/multistage_apple_v4/dataset-20260508.zip`，不要提交Git。Raw可以从Mac复制；必须验证固定SHA：
@@ -55,7 +55,7 @@ python IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py validate
 7. **Step 7 — Resolved config。** 核对配置、正式池及设备，输出须为`e01_yolo11n_seg`和`cuda:0`；正式run目录必须尚不存在。解析固定8.3.220的请求/default/有效预训练参数：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py preflight --require-cuda
+python IOR-YOLO/scripts/15_e01_run.py preflight --require-cuda --platform windows
 ```
 
 ```powershell
@@ -65,7 +65,7 @@ python IOR-YOLO/scripts/16_resolve_e01_config.py
 8. **Step 8 — Pretrained weight verification。** 官方`yolo11n-seg.pt`只作初始化；命令可能可见下载，并输出文件名、Ultralytics 8.3.220来源说明、SHA256及文件时间。获取失败就停止，禁止改为随机初始化：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py verify-weights
+python IOR-YOLO/scripts/15_e01_run.py verify-weights --platform windows
 ```
 
 正式run manifest会再次保存权重文件名、来源、SHA256和文件时间。
@@ -73,13 +73,13 @@ python IOR-YOLO/scripts/15_e01_run.py verify-weights
 9. **Step 9 — Tiny CUDA smoke。** 使用同一派生数据及配置做一次可丢弃的1 epoch、2%数据CUDA可行性检查；它不是正式结果：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py smoke
+python IOR-YOLO/scripts/15_e01_run.py smoke --platform windows
 ```
 
 batch8明确CUDA OOM时，保留报错证据并只允许8→4：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py smoke --batch 4 --oom-note "Pre-training RTX 3070 smoke produced CUDA OOM at batch 8"
+python IOR-YOLO/scripts/15_e01_run.py smoke --platform windows --batch 4 --oom-note "Pre-training RTX 3070 smoke produced CUDA OOM at batch 8"
 ```
 
 batch变化只用于硬件可行性，不属于性能优化；不比较多个batch，不在正式训练后改变batch。
@@ -89,13 +89,13 @@ batch变化只用于硬件可行性，不属于性能优化；不比较多个bat
 11. **Step 11 — Formal train。** 仅在第10步通过后，由用户在Windows VS Code Terminal可见启动一次：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py train
+python IOR-YOLO/scripts/15_e01_run.py train --platform windows
 ```
 
 batch8是预先声明的显存安全选择。若**正式训练前**的极小GPU smoke明确CUDA OOM，可以仅按预定义`8→4`执行，并把真实OOM证据写入命令参数；不做多batch性能比较、不静默改配置：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py train --batch 4 --oom-note "Pre-training RTX 3070 smoke produced CUDA OOM at batch 8"
+python IOR-YOLO/scripts/15_e01_run.py train --platform windows --batch 4 --oom-note "Pre-training RTX 3070 smoke produced CUDA OOM at batch 8"
 ```
 
 以上训练命令按batch8或已有OOM证据的batch4**二选一**，只启动一次正式E01。入口保存Git HEAD/status、预训练权重来源与SHA、训练前resolved配置，并在训练后保存实际auto optimizer/LR、`args.yaml`和checkpoint SHA。
@@ -103,7 +103,7 @@ python IOR-YOLO/scripts/15_e01_run.py train --batch 4 --oom-note "Pre-training R
 训练完成后必须同时存在`best.pt`、`last.pt`、`results.csv`、`args.yaml`、`run_manifest.yaml`、`resolved_train_config.yaml`及Ultralytics标准图表；缺一不能标记COMPLETED。固定`best.pt`后先正式Val：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py val
+python IOR-YOLO/scripts/15_e01_run.py val --platform windows
 ```
 
 ```powershell
@@ -114,7 +114,7 @@ python IOR-YOLO/scripts/17_analyze_e01_results.py --split val
 只有training完成、best固定、Val完成、配置不再变化且分析协议固定后，才执行一次最终Test：
 
 ```powershell
-python IOR-YOLO/scripts/15_e01_run.py test --final-test
+python IOR-YOLO/scripts/15_e01_run.py test --platform windows --final-test
 python IOR-YOLO/scripts/18_export_e01_predictions.py --split test --final-test
 python IOR-YOLO/scripts/17_analyze_e01_results.py --split test --final-test
 ```

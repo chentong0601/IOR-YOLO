@@ -1,6 +1,6 @@
 # E01 结果分析协议（运行前准备）
 
-状态：**Analysis pipeline READY；没有正式训练、Val、Test或性能数字**。只有Windows RTX 3070的正式E01结束后，才用真实输出执行下述命令。脚本和表格现在仅经合成数据单元测试。E01仍是普通instance segmentation基线，不包含ordinal训练目标。
+状态：**Analysis pipeline READY；没有正式训练、Val、Test或性能数字**。只有当前审核的Kaggle单GPU正式E01（或后续明确启用的备用平台）结束后，才用真实输出执行下述命令。脚本和表格现在仅经合成数据单元测试。E01仍是普通instance segmentation基线，不包含ordinal训练目标。
 
 ## 产物与来源
 
@@ -29,4 +29,4 @@ F1 Missed Fruit、F2 False Positive、F3 Adjacent Maturity Confusion、F4 Severe
 
 ## 可追溯性及约束
 
-每次分析核对Git commit和clean标志、run ID、训练seed、Ultralytics8.3.220、D2 ZIP和冻结pool/split/protocol SHA、E01 config、best checkpoint及实际resolved config SHA；报告另记录run manifest、真实训练CSV、预测CSV与分析脚本自身SHA。任何缺失/不一致均发出显式`E01 provenance`警告并在报告中保留`incomplete`，不可把该分析当已核验论文结论。Val/Test完整评估同原生mAP结果与逐实例分析分开保存；Mac合成测试只证明代码逻辑，不证明RTX 3070端到端运行。未来尤其核验U01未知polygon区域按普通背景FP计分的真实框架语义。
+每次分析核对Git commit和clean标志、run ID、训练seed、Ultralytics8.3.220、D2 ZIP来源与冻结pool/split/protocol SHA、E01 config、best checkpoint及实际resolved config SHA；报告另记录run manifest、真实训练CSV、预测CSV与分析脚本自身SHA。任何缺失/不一致均发出显式`E01 provenance`警告并在报告中保留`incomplete`，不可把该分析当已核验论文结论。Val/Test完整评估同原生mAP结果与逐实例分析分开保存；Mac合成测试只证明代码逻辑，不证明Kaggle正式运行时端到端运行。未来尤其核验U01未知polygon区域按普通背景FP计分的真实框架语义。

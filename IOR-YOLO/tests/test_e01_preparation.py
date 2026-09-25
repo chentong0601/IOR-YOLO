@@ -43,17 +43,27 @@ class E01PreparationTest(unittest.TestCase):
         config = runner.load_config()
         template = yaml.safe_load(runner.TEMPLATE.read_text(encoding="utf-8"))
         required = ("run_id", "experiment_id", "git_commit", "timestamp_start_utc", "hostname",
-                    "os", "python", "pytorch", "ultralytics", "cuda_runtime", "gpu",
-                    "gpu_memory_bytes", "dataset_doi", "dataset_zip_sha256", "frozen_pool_sha256",
+                    "os", "platform", "execution_platform", "cloud_provider", "cloud_session_type",
+                    "container_image_git_commit", "container_image_build_date", "python", "pytorch",
+                    "python_executable", "ultralytics", "numpy", "opencv", "opencv_python",
+                    "cuda_runtime", "gpu", "gpu_memory_bytes", "gpu_count", "visible_gpu_count",
+                    "gpu_inventory", "selected_formal_device", "dataset_doi", "dataset_zip_sha256",
+                    "raw_source_kind", "raw_source_path", "raw_identity_status",
+                    "raw_identity_evidence_sha256", "files_sha256_manifest_sha256", "frozen_pool_sha256",
                     "frozen_split_sha256", "protocol_yaml_sha256", "model", "pretrained_weights_sha256",
                     "task", "training_seed", "imgsz", "epochs", "batch", "optimizer",
                     "learning_rate_initial", "weight_decay", "scheduler", "augmentation",
                     "best_checkpoint", "last_checkpoint", "validation_metrics_box", "validation_metrics_mask",
-                    "test_metrics_box", "test_metrics_mask", "results_directory", "notes")
+                    "test_metrics_box", "test_metrics_mask", "results_directory", "output_root", "notes")
         self.assertFalse(set(required) - set(template))
         self.assertEqual(config["training_seed"], 0)
         self.assertNotEqual(config["training_seed"], config["split_seed_64"])
         self.assertEqual(config["model"], "yolo11n-seg.pt")
+        execution = config["execution_environment"]
+        self.assertEqual(execution["formal_platform"], "Kaggle")
+        self.assertEqual(execution["formal_device"], "cuda:0")
+        self.assertTrue(execution["single_gpu_only"])
+        self.assertEqual(execution["verified_kaggle_runtime"]["torch"], "2.10.0+cu128")
 
     def test_real_conversion_and_deterministic_rebuild(self):
         if not e01.DEFAULT_ARCHIVE.is_file():

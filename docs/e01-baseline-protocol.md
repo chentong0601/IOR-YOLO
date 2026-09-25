@@ -25,9 +25,9 @@ U01 `test/IMG_54350.jpg`按其**原官方定位**读取4个region，派生标签
 
 ## 固定训练设置与设备分工
 
-固定Python 3.11、Windows `torch==2.5.1+cu121`、`torchvision==0.20.1+cu121`、Ultralytics `8.3.220`。软件组合在正式RTX 3070上仍须通过预检；不以Mac MPS吞吐确定正式超参数。RTX 3070承担正式train、val、最终test；Mac M5只承担代码/数据/配置校验和必要CPU/MPS极小smoke；无独显联想Windows机仅按需做路径/PowerShell兼容检查。PyTorch官方提供该[版本与CUDA 12.1 wheel组合](https://docs.pytorch.org/get-started/previous-versions/)。不在Mac安装CUDA或NVIDIA包。
+当前正式平台为Kaggle单GPU `device=0`。候选正式运行时已人工验证Python3.12.13、PyTorch2.10.0+cu128、torchvision0.25.0+cu128、Ultralytics8.3.220、CUDA12.8及Tesla T4；这些是execution provenance，不是科研处理变量。Ultralytics继续锁定8.3.220；torch/torchvision/CUDA使用已验证Kaggle组合并在正式run记录精确版本，不为追溯旧Windows计划而降级。Windows Python3.11/cu121/RTX3070只保留为备用profile。Mac M5仍只承担开发及低成本校验，不以Mac MPS结果确定正式参数。
 
-单一训练seed为 **0**，即固定Ultralytics默认seed；与冻结dataset split seed `13436313853456744620` 完全不同，后者不会因模型结果再选择。100 epochs、640输入、batch8、**optimizer=auto**、请求值`lr0=.01`、weight decay .0005、线性LR至`lrf=.01`、3 epoch warmup、patience100、workers4、deterministic=true、AMP=true、cache=false。核对安装包证实auto才是8.3.220默认；trainer会忽略请求的lr0/momentum并选择实际优化器，详见[8.3.220默认与更正](e01-ultralytics-83220-defaults.md)。batch8与workers4是预先声明的3070/Windows资源选择，不据本项目实验结果调优。若正式训练前短smoke出现CUDA OOM，仅按预定义的**8→4**显式记录和执行，不运行多个batch择优。100 epoch是最大预算，Val fitness决定best；Test不参与。正式执行会保存预训练resolved配置、观测到的实际optimizer/LR、Ultralytics `args.yaml`、best/last权重及run manifest。
+单一训练seed为 **0**，即固定Ultralytics默认seed；与冻结dataset split seed `13436313853456744620` 完全不同，后者不会因模型结果再选择。100 epochs、640输入、batch8、**optimizer=auto**、请求值`lr0=.01`、weight decay .0005、线性LR至`lrf=.01`、3 epoch warmup、patience100、workers4、deterministic=true、AMP=true、cache=false。核对安装包证实auto才是8.3.220默认；trainer会忽略请求的lr0/momentum并选择实际优化器，详见[8.3.220默认与更正](e01-ultralytics-83220-defaults.md)。batch8与workers4是训练前冻结设置，不据平台或本项目实验结果调优。若正式训练前短smoke出现CUDA OOM，仅按预定义的**8→4**显式记录和执行，不运行多个batch择优。100 epoch是最大预算，Val fitness决定best；Test不参与。正式执行会保存预训练resolved配置、观测到的实际optimizer/LR、Ultralytics `args.yaml`、best/last权重及run manifest。
 
 在线augmentation全部显式固定：`hsv_h=.015`、`hsv_s=.7`、`hsv_v=.4`、`degrees=0`、`translate=.1`、`scale=.5`、`shear=0`、`perspective=0`、`flipud=0`、`fliplr=.5`、`mosaic=1`、`mixup=0`、`copy_paste=0`、`copy_paste_mode=flip`、`close_mosaic=10`。这些是Ultralytics 8.3.220默认/标准策略的显式记录；无CPIP，也不使用D2提供的离线brightness/noise或resize表示。参数依据可对照[官方训练与增强文档](https://docs.ultralytics.com/modes/train/)及锁定wheel的`default.yaml`。未来CPIP须与E01相同基线条件独立比较。
 
@@ -39,8 +39,8 @@ Train用于拟合；Val用于训练监控、early stopping及确定最终best ch
 
 Stage 3C执行冻结后，官方`yolo11n-seg.pt`仅作初始化权重；工作站获取失败必须停止，不得改用随机初始化。权重文件名、Ultralytics来源/版本、SHA256及文件时间在训练前核验，正式manifest再次记录。正式训练要求E01脚本、配置、requirements和冻结manifest均来自已提交HEAD；用户明确知道的无关工作区变化可以存在并记录，但E01相关路径有未提交内容时拒绝启动。Windows只接收固定raw ZIP并核验SHA，派生集必须现场重建。完整交接次序见[工作站清单](e01-workstation-checklist.md)。
 
-实际验证（2026-09-20）：两次临时目录重建的派生文件逐SHA一致；Mac上的Ultralytics 8.3.220官方`YOLODataset`依次加载train/val/test **769/165/165**图、**1455/323/294**个目标，无background或corrupt记录，YAML解析类别0/1/2准确。`yolo11n-seg.yaml`在Mac Python3.12.14、Torch2.5.1下完成构建及一次64×64合成CPU前向；MPS可用，但没有运行MPS训练，也没有下载预训练权重。27项项目低成本测试通过。Mac的Python3.12 smoke只证明开发环境兼容，**不替代正式Windows Python3.11+CUDA的现场预检**。
+实际验证（2026-09-20）：两次临时目录重建的派生文件逐SHA一致；Mac上的Ultralytics 8.3.220官方`YOLODataset`依次加载train/val/test **769/165/165**图、**1455/323/294**个目标，无background或corrupt记录，YAML解析类别0/1/2准确。`yolo11n-seg.yaml`在Mac Python3.12.14、Torch2.5.1下完成构建及一次64×64合成CPU前向；MPS可用，但没有运行MPS训练，也没有下载预训练权重。27项项目低成本测试通过。该Mac smoke只证明开发环境兼容，**不替代当前Kaggle正式运行时的现场预检**。
 
-Stage 3A Gate：A–G（冻结数据、确定性派生、格式/类别/计数、已列关系隔离、U01派生标签）已验证；H–J（唯一主模型/固定配置、训练seed、在线增强）已固定；K（Windows环境）已有版本化安装步骤和必须通过的现场CUDA检查，**实际RTX 3070尚未到手，现场结果待执行**；L–N（run manifest、命令、最终test纪律）已备。`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`将保存Ultralytics原生`weights/`、`args.yaml`、`results.csv`和图表，入口脚本另准备`metrics/`、`predictions/`、`figures/`及`run_manifest.yaml`；整个目录被Git忽略。
+Stage 3A Gate：A–G（冻结数据、确定性派生、格式/类别/计数、已列关系隔离、U01派生标签）已验证；H–J（唯一主模型/固定配置、训练seed、在线增强）已固定；K已迁移为Kaggle运行时门禁，实际软件栈和GPU已人工核验，解包内容身份、权重hash及batch8 CUDA smoke仍须在正式Notebook完成；L–N（run manifest、命令、最终test纪律）已备。`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`或`E01_RUNS_ROOT`指定目录将保存Ultralytics原生`weights/`、`args.yaml`、`results.csv`和图表，入口脚本另准备`metrics/`、`predictions/`、`figures/`及`run_manifest.yaml`；本地默认目录被Git忽略。
 
 Stage 3A通过的含义是**E01 READY TO RUN，不是COMPLETED**：代码、数据及运行协议准备完成，工作站上线后先过[Windows预检](windows-e01-training-setup.md)，再可由用户亲自在VS Code Terminal启动。CUDA driver/版本、真实GPU与显存、预训练权重获取、派生集重建或config有任何缺项，均不得启动正式train。实际YOLO evaluator对U01普通FP语义仍需在首个真实框架评价环节核验；若不符合则停止并修正实现，不静默变更冻结annotation policy。

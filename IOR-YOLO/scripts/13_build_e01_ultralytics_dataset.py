@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import io
 import json
 import math
@@ -26,6 +27,7 @@ DEFAULT_ARCHIVE = ROOT / "data/raw/multistage_apple_v4/dataset-20260508.zip"
 DEFAULT_MANIFESTS = ROOT / "data/manifests"
 DEFAULT_PROTOCOL = ROOT / "configs/data/d2_frozen_protocol.yaml"
 DEFAULT_OUTPUT = ROOT / "data/processed/d2_e01_ultralytics"
+DEFAULT_IDENTITY = ROOT / "configs/data/d2_unpacked_identity.json"
 SPLITS = ("train", "val", "test")
 CLASSES = ("immature apple", "semi-mature apple", "mature apple")
 NAMES = ("d2_experiment_pool_frozen.csv", "d2_split_frozen.csv", "d2_exclusions_frozen.csv")
@@ -40,6 +42,38 @@ names:
   1: semi-mature apple
   2: mature apple
 """
+
+spec = importlib.util.spec_from_file_location("d2_unpacked_identity", Path(__file__).with_name("19_verify_d2_unpacked.py"))
+unpacked_identity = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(unpacked_identity)
+
+
+class DirectorySource:
+    def __init__(self, root: Path):
+        self.root = root.resolve()
+
+    def namelist(self) -> list[str]:
+        return [f"{self.root.name}/{path.relative_to(self.root).as_posix()}"
+                for path in self.root.rglob("*") if path.is_file()]
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def read(self, member: str) -> bytes:
+        prefix = f"{self.root.name}/"
+        if not member.startswith(prefix):
+            raise ValueError(f"raw member prefix differs from directory root: {member}")
+        path = (self.root / member.removeprefix(prefix)).resolve()
+        if self.root not in path.parents:
+            raise ValueError(f"unsafe raw member: {member}")
+        return path.read_bytes()
+
+
+def open_source(path: Path):
+    return DirectorySource(path) if path.is_dir() else zipfile.ZipFile(path)
 
 
 def sha(path: Path) -> str:
@@ -66,12 +100,18 @@ def read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(source))
 
 
-def frozen_inputs(archive: Path, manifests: Path, protocol_path: Path) -> tuple[dict, list[dict], list[dict]]:
+def frozen_inputs(source: Path, manifests: Path, protocol_path: Path,
+                  identity_path: Path = DEFAULT_IDENTITY) -> tuple[dict, list[dict], list[dict], dict]:
     protocol = read_protocol(protocol_path)
     if protocol["protocol_version"] != "d2-v4-stage2b5-v1" or protocol["split_ratio"] != "70/15/15":
         raise ValueError("unexpected frozen protocol/version/ratio")
-    if archive.name != protocol["zip_filename"] or sha(archive) != protocol["zip_sha256"]:
-        raise ValueError("raw ZIP does not match frozen protocol")
+    if source.is_dir():
+        identity = unpacked_identity.verify(source, manifests / "files_sha256.csv", identity_path)
+    elif source.name == protocol["zip_filename"] and sha(source) == protocol["zip_sha256"]:
+        identity = {"status": "VERIFIED", "source_kind": "original_zip",
+                    "source_zip_sha256_provenance": protocol["zip_sha256"]}
+    else:
+        raise ValueError("raw source does not match frozen ZIP or unpacked byte-level evidence")
     if sha(protocol_path) != "09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870":
         raise ValueError("frozen protocol YAML changed; E01 requires explicit version review")
     for name in NAMES:
@@ -97,7 +137,7 @@ def frozen_inputs(archive: Path, manifests: Path, protocol_path: Path) -> tuple[
         guards[r["split_guard_cluster_id"]].add(r["final_split"])
     if any(len(x) > 1 for x in (*groups.values(), *guards.values())):
         raise ValueError("source group or guard cluster crosses split")
-    return protocol, split, excluded
+    return protocol, split, excluded, identity
 
 
 def region_rows(regions: list[dict], width: int, height: int, *, u01: bool) -> tuple[list[str], Counter]:
@@ -133,14 +173,14 @@ def region_rows(regions: list[dict], width: int, height: int, *, u01: bool) -> t
     return lines, counts
 
 
-def annotations_in_zip(archive: zipfile.ZipFile, split: list[dict]) -> dict[str, dict[str, list[dict]]]:
-    members = set(archive.namelist())
+def annotations_in_source(source, split: list[dict]) -> dict[str, dict[str, list[dict]]]:
+    members = set(source.namelist())
     json_members = {r["raw_annotation_zip_member"] for r in split}
     records = {}
     for member in json_members:
         if member not in members:
             raise ValueError(f"missing raw JSON: {member}")
-        raw = json.loads(archive.read(member))
+        raw = json.loads(source.read(member))
         parsed = {}
         for record in raw.values():
             regions = record["regions"]
@@ -165,8 +205,9 @@ def expected_counters(split: list[dict]) -> dict[str, Counter]:
     return counters
 
 
-def build(archive_path: Path, manifests: Path, protocol_path: Path, output: Path, *, replace: bool = False) -> dict:
-    protocol, split, excluded = frozen_inputs(archive_path, manifests, protocol_path)
+def build(source_path: Path, manifests: Path, protocol_path: Path, output: Path, *, replace: bool = False,
+          identity_path: Path = DEFAULT_IDENTITY) -> dict:
+    protocol, split, excluded, identity = frozen_inputs(source_path, manifests, protocol_path, identity_path)
     expected_counters(split)
     if output.exists() and not replace:
         raise FileExistsError(f"derived output already exists: {output}; use --replace to rebuild")
@@ -179,9 +220,9 @@ def build(archive_path: Path, manifests: Path, protocol_path: Path, output: Path
         (staging / "dataset.yaml").write_text(DATASET_YAML, encoding="utf-8", newline="\n")
         statistics = {name: Counter() for name in SPLITS}
         image_keys = set()
-        with zipfile.ZipFile(archive_path) as archive:
-            annotation_records = annotations_in_zip(archive, split)
-            members = set(archive.namelist())
+        with open_source(source_path) as source:
+            annotation_records = annotations_in_source(source, split)
+            members = set(source.namelist())
             for row in split:
                 member, part, name = row["raw_image_zip_member"], row["final_split"], row["filename"]
                 if member not in members or not member.endswith("/" + name):
@@ -190,7 +231,7 @@ def build(archive_path: Path, manifests: Path, protocol_path: Path, output: Path
                 if key in image_keys:
                     raise ValueError(f"filename collision in derived {part}: {name}")
                 image_keys.add(key)
-                raw = archive.read(member)
+                raw = source.read(member)
                 with Image.open(io.BytesIO(raw)) as image:
                     image.load()
                     if image.format != "JPEG":
@@ -225,18 +266,22 @@ def build(archive_path: Path, manifests: Path, protocol_path: Path, output: Path
     return {"status": "derived E01 segmentation dataset validated; no training run",
             "dataset_protocol_version": protocol["protocol_version"],
             "raw_zip_sha256": protocol["zip_sha256"],
+            "raw_source_kind": identity["source_kind"],
+            "raw_identity_status": identity["status"],
+            "raw_identity_evidence_sha256": identity.get("identity_evidence_sha256"),
             "statistics": {part: dict(statistics[part]) for part in SPLITS},
             "excluded_representations": len(excluded), "derived_root": str(output),
             "u01_derived_targets": 3}
 
 
-def validate_only(archive_path: Path, manifests: Path, protocol_path: Path, output: Path) -> dict:
-    protocol, split, excluded = frozen_inputs(archive_path, manifests, protocol_path)
+def validate_only(source_path: Path, manifests: Path, protocol_path: Path, output: Path,
+                  identity_path: Path = DEFAULT_IDENTITY) -> dict:
+    protocol, split, excluded, identity = frozen_inputs(source_path, manifests, protocol_path, identity_path)
     expected_counters(split)
     if (output / "dataset.yaml").read_text(encoding="utf-8") != DATASET_YAML:
         raise ValueError("derived dataset YAML differs")
-    with zipfile.ZipFile(archive_path) as archive:
-        raw_annotations = annotations_in_zip(archive, split)
+    with open_source(source_path) as source:
+        raw_annotations = annotations_in_source(source, split)
         for part in SPLITS:
             rows = [r for r in split if r["final_split"] == part]
             images = set((output / "images" / part).iterdir())
@@ -249,7 +294,7 @@ def validate_only(archive_path: Path, manifests: Path, protocol_path: Path, outp
                 label = output / "labels" / part / (Path(name).stem + ".txt")
                 if image not in images or label not in labels:
                     raise ValueError(f"derived pair missing: {part}/{name}")
-                raw = archive.read(row["raw_image_zip_member"])
+                raw = source.read(row["raw_image_zip_member"])
                 if image.read_bytes() != raw:
                     raise ValueError(f"derived image changed: {part}/{name}")
                 with Image.open(io.BytesIO(raw)) as im:
@@ -260,20 +305,31 @@ def validate_only(archive_path: Path, manifests: Path, protocol_path: Path, outp
                 if label.read_text(encoding="utf-8") != "\n".join(expected_lines) + "\n":
                     raise ValueError(f"derived label changed: {part}/{name}")
     return {"status": "validated", "counts": EXPECTED,
-            "protocol_version": protocol["protocol_version"], "exclusions": len(excluded)}
+            "protocol_version": protocol["protocol_version"], "exclusions": len(excluded),
+            "raw_source_kind": identity["source_kind"],
+            "raw_identity_status": identity["status"],
+            "raw_identity_evidence_sha256": identity.get("identity_evidence_sha256")}
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("build", "validate"))
-    parser.add_argument("--archive", type=Path, default=DEFAULT_ARCHIVE)
+    parser.add_argument("--source", type=Path, help="original ZIP or verified unpacked dataset root")
+    parser.add_argument("--archive", type=Path, help="deprecated alias for --source")
     parser.add_argument("--manifest-dir", type=Path, default=DEFAULT_MANIFESTS)
     parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL)
+    parser.add_argument("--identity", type=Path, default=DEFAULT_IDENTITY)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--replace", action="store_true")
     args = parser.parse_args()
-    result = (build(args.archive, args.manifest_dir, args.protocol, args.output, replace=args.replace)
-              if args.command == "build" else validate_only(args.archive, args.manifest_dir, args.protocol, args.output))
+    if args.source and args.archive:
+        parser.error("use only one of --source or --archive")
+    source = args.source or args.archive or DEFAULT_ARCHIVE
+    result = (build(source, args.manifest_dir, args.protocol, args.output, replace=args.replace,
+                    identity_path=args.identity)
+              if args.command == "build" else
+              validate_only(source, args.manifest_dir, args.protocol, args.output,
+                            identity_path=args.identity))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

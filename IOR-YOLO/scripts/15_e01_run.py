@@ -1,6 +1,6 @@
-"""Pinned E01 preflight and user-visible Windows train/val/final-test entrypoint.
+"""Pinned E01 preflight and user-visible CUDA train/val/final-test entrypoint.
 
-Never run train/val/test on macOS; preflight is read-only on either platform.
+Formal execution supports the reviewed Kaggle, Colab or Windows CUDA platform.
 Final test is a separate explicit command after validation is recorded.
 """
 
@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import platform
 import shutil
 import socket
@@ -26,9 +27,11 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "configs/experiments/e01_yolo11n_seg.yaml"
 TEMPLATE = ROOT / "configs/experiments/run_manifest_template.yaml"
 DATASET = ROOT / "data/processed/d2_e01_ultralytics"
-RUN_DIR = ROOT / "runs/e01_yolo11n_seg/seed_0"
+RUNS_ROOT = Path(os.environ.get("E01_RUNS_ROOT", ROOT / "runs")).expanduser().resolve()
+RUN_DIR = RUNS_ROOT / "e01_yolo11n_seg/seed_0"
 E01_GIT_PATHS = (
     "IOR-YOLO/configs/data/d2_frozen_protocol.yaml",
+    "IOR-YOLO/configs/data/d2_unpacked_identity.json",
     "IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml",
     "IOR-YOLO/configs/experiments/run_manifest_template.yaml",
     "IOR-YOLO/data/manifests/d2_experiment_pool_frozen.csv",
@@ -41,10 +44,12 @@ E01_GIT_PATHS = (
     "IOR-YOLO/scripts/16_resolve_e01_config.py",
     "IOR-YOLO/scripts/17_analyze_e01_results.py",
     "IOR-YOLO/scripts/18_export_e01_predictions.py",
+    "IOR-YOLO/scripts/19_verify_d2_unpacked.py",
 )
 spec = importlib.util.spec_from_file_location("e01_dataset", Path(__file__).with_name("13_build_e01_ultralytics_dataset.py"))
 dataset = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dataset)
+RAW_SOURCE = Path(os.environ.get("E01_RAW_SOURCE", dataset.DEFAULT_ARCHIVE)).expanduser().resolve()
 spec = importlib.util.spec_from_file_location("e01_environment", Path(__file__).with_name("14_check_training_environment.py"))
 environment = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(environment)
@@ -72,24 +77,30 @@ def load_config() -> dict:
         raise ValueError("E01 config differs from D2 frozen protocol")
     if config["train"]["seed"] != config["training_seed"]:
         raise ValueError("training seed disagreement")
+    execution = config["execution_environment"]
+    if (execution["formal_platform"], execution["formal_device"], execution["single_gpu_only"]) != (
+            "Kaggle", "cuda:0", True):
+        raise ValueError("E01 formal execution policy changed")
     return config
 
 
-def preflight(*, require_cuda: bool = False) -> dict:
+def preflight(*, require_cuda: bool = False, expected_platform: str | None = None) -> dict:
     config = load_config()
     resolved = resolver.resolve(CONFIG)
-    converted = dataset.validate_only(dataset.DEFAULT_ARCHIVE, dataset.DEFAULT_MANIFESTS,
+    converted = dataset.validate_only(RAW_SOURCE, dataset.DEFAULT_MANIFESTS,
                                       dataset.DEFAULT_PROTOCOL, DATASET)
-    hardware = environment.inspect(require_cuda=require_cuda)
+    hardware = environment.inspect(require_cuda=require_cuda, expected_platform=expected_platform)
     if "error" in hardware:
         raise RuntimeError(hardware["error"])
-    if hardware["ultralytics"] != config["ultralytics_version"]:
+    expected_ultralytics = config["execution_environment"]["compatibility"]["ultralytics"].removeprefix("==")
+    if hardware["ultralytics"] != expected_ultralytics:
         raise RuntimeError("Ultralytics version mismatch")
     if require_cuda and hardware["selected_accelerator"] != "cuda:0":
         raise RuntimeError("formal E01 requires cuda:0")
     return {"dataset": converted, "environment": hardware, "experiment_id": config["experiment_id"],
             "optimizer_auto_projection": resolved["optimizer_auto_projection"],
-            "dataset_yaml": str((DATASET / "dataset.yaml").resolve())}
+            "dataset_yaml": str((DATASET / "dataset.yaml").resolve()),
+            "raw_source": str(RAW_SOURCE)}
 
 
 def git_state() -> dict:
@@ -115,15 +126,16 @@ def pretrained_weight_record(model=None) -> tuple[object, dict]:
                    "local_path": str(path.resolve())}
 
 
-def verify_weights() -> dict:
-    preflight(require_cuda=True)
+def verify_weights(*, expected_platform: str | None = None) -> dict:
+    preflight(require_cuda=True, expected_platform=expected_platform)
     _, record = pretrained_weight_record()
     return {"status": "official_pretrained_weight_verified", **record}
 
 
-def smoke(*, batch: int = 8, oom_note: str | None = None) -> dict:
+def smoke(*, batch: int = 8, oom_note: str | None = None,
+          expected_platform: str | None = None) -> dict:
     """Run a disposable one-epoch/tiny-fraction CUDA feasibility check, never a formal result."""
-    ready = preflight(require_cuda=True)
+    ready = preflight(require_cuda=True, expected_platform=expected_platform)
     if batch not in (8, 4) or (batch == 4) != bool(oom_note):
         raise ValueError("smoke uses batch 8; batch 4 requires the prior batch-8 CUDA OOM note")
     state = git_state()
@@ -164,8 +176,9 @@ def metric_record(metric) -> dict:
                           for i, class_id in enumerate(metric.ap_class_index)}}
 
 
-def train(*, batch_override: int | None = None, oom_note: str | None = None) -> dict:
-    ready = preflight(require_cuda=True)
+def train(*, batch_override: int | None = None, oom_note: str | None = None,
+          expected_platform: str | None = None) -> dict:
+    ready = preflight(require_cuda=True, expected_platform=expected_platform)
     config = load_config()
     if (batch_override == 4) != bool(oom_note):
         raise ValueError("batch 4 requires a pretraining CUDA OOM note; no note permitted without fallback")
@@ -230,9 +243,23 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
                     resolved_config_sha256=sha(RUN_DIR / "resolved_train_config.yaml"),
                     timestamp_start_utc=started, timestamp_end_utc=datetime.now(timezone.utc).isoformat(),
                     hostname=socket.gethostname(), os=platform.platform(), python=env["python"],
+                    python_executable=env["python_executable"],
+                    platform=env["execution_platform"],
+                    execution_platform=env["execution_platform"], cloud_provider=env["cloud_provider"],
+                    cloud_session_type=env["cloud_session_type"],
+                    container_image_git_commit=env["container_image_git_commit"],
+                    container_image_build_date=env["container_image_build_date"],
                     pytorch=env["torch"], torchvision=env["torchvision"],
-                    ultralytics=env["ultralytics"], cuda_runtime=env["cuda_runtime"],
+                    ultralytics=env["ultralytics"], numpy=env["numpy"], opencv=env["opencv"],
+                    opencv_python=env["opencv_python"], cuda_runtime=env["cuda_runtime"],
                     gpu=env["gpu_name"], gpu_memory_bytes=env["gpu_memory_bytes"],
+                    gpu_count=env["gpu_count"], visible_gpu_count=env["visible_gpu_count"],
+                    gpu_inventory=env["gpu_inventory"],
+                    selected_formal_device=env["selected_formal_device"],
+                    raw_source_kind=ready["dataset"]["raw_source_kind"],
+                    raw_source_path=str(RAW_SOURCE),
+                    raw_identity_status=ready["dataset"]["raw_identity_status"],
+                    raw_identity_evidence_sha256=ready["dataset"].get("raw_identity_evidence_sha256"),
                     derived_dataset_yaml=ready["dataset_yaml"], pretrained_weights_sha256=weight_record["sha256"],
                     pretrained_weights_filename=weight_record["filename"],
                     pretrained_weights_source=weight_record["source"],
@@ -247,12 +274,13 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
                     actual_args_yaml=str(RUN_DIR / "args.yaml"),
                     best_checkpoint=str(RUN_DIR / "weights/best.pt"),
                     last_checkpoint=str(RUN_DIR / "weights/last.pt"),
-                    results_directory=str(RUN_DIR))
+                    results_directory=str(RUN_DIR), output_root=str(RUNS_ROOT))
     write_manifest(manifest)
     return {"status": manifest["status"], "run_directory": str(RUN_DIR)}
 
 
-def evaluate(split: str, *, final_test: bool = False) -> dict:
+def evaluate(split: str, *, final_test: bool = False,
+             expected_platform: str | None = None) -> dict:
     if split not in ("val", "test"):
         raise ValueError("only val and test are supported")
     if split == "test" and not final_test:
@@ -261,7 +289,7 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
         raise ValueError("--final-test is only valid for test")
     if split == "test":
         print("FINAL TEST EVALUATION — one-time locked evaluation; no model selection")
-    ready = preflight(require_cuda=True)
+    ready = preflight(require_cuda=True, expected_platform=expected_platform)
     manifest = read_manifest()
     if sha(RUN_DIR / "resolved_train_config.yaml") != manifest.get("resolved_config_sha256"):
         raise RuntimeError("resolved training config changed after formal run")
@@ -293,7 +321,9 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("preflight", "verify-weights", "smoke", "train", "val", "test"))
-    parser.add_argument("--require-cuda", action="store_true", help="enforce Windows RTX 3070 also for preflight")
+    parser.add_argument("--require-cuda", action="store_true", help="enforce the pinned CUDA stack for preflight")
+    parser.add_argument("--platform", choices=tuple(environment.PLATFORM_LABELS), default="kaggle",
+                        help="formal execution platform; default is the primary Kaggle plan")
     parser.add_argument("--batch", type=int, choices=(4, 8), default=8,
                         help="smoke/train: 4 requires documented prior batch-8 CUDA OOM")
     parser.add_argument("--oom-note", help="pretraining OOM evidence/reason when using batch 4")
@@ -301,11 +331,16 @@ def main() -> None:
     args = parser.parse_args()
     if args.final_test and args.command != "test":
         parser.error("--final-test only applies to test")
-    result = (preflight(require_cuda=args.require_cuda) if args.command == "preflight" else
-              verify_weights() if args.command == "verify-weights" else
-              smoke(batch=args.batch, oom_note=args.oom_note) if args.command == "smoke" else
-              train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note)
-              if args.command == "train" else evaluate(args.command, final_test=args.final_test))
+    result = (preflight(require_cuda=args.require_cuda,
+                        expected_platform=args.platform if args.require_cuda else None)
+              if args.command == "preflight" else
+              verify_weights(expected_platform=args.platform) if args.command == "verify-weights" else
+              smoke(batch=args.batch, oom_note=args.oom_note, expected_platform=args.platform)
+              if args.command == "smoke" else
+              train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note,
+                    expected_platform=args.platform)
+              if args.command == "train" else
+              evaluate(args.command, final_test=args.final_test, expected_platform=args.platform))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

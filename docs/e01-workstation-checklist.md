@@ -1,4 +1,6 @@
-# E01 Windows RTX 3070 checklist
+# E01 Windows RTX 3070 fallback checklist
+
+本清单仅用于备用Windows路径；当前正式执行平台是Kaggle。
 
 ## Before Training
 

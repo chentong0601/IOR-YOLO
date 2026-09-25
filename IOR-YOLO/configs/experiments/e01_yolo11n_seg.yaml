@@ -9,18 +9,33 @@ dataset_zip_sha256: 049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde1
 experiment_pool_sha256: a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5
 dataset_split_sha256: 0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1
 protocol_yaml_sha256: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870
-python_version: "3.11"
-torch_version: "2.5.1+cu121"
-torchvision_version: "0.20.1+cu121"
-ultralytics_version: "8.3.220"
-target_platform: Windows RTX 3070
+execution_environment:
+  # Execution provenance is not a scientific treatment variable.
+  formal_platform: Kaggle
+  formal_device: cuda:0
+  single_gpu_only: true
+  compatibility:
+    python: ">=3.11,<3.13"
+    cuda_required: true
+    ultralytics: "==8.3.220"
+    torch_torchvision: compatible CUDA-enabled pair; exact versions recorded at runtime
+  verified_kaggle_runtime:
+    python: "3.12.13"
+    python_executable: /usr/bin/python3
+    torch: "2.10.0+cu128"
+    torchvision: "0.25.0+cu128"
+    ultralytics: "8.3.220"
+    numpy: "2.0.2"
+    opencv_python: "4.13.0.92"
+    cuda_runtime: "12.8"
+    gpu: NVIDIA Tesla T4
+    visible_gpu_count: 2
 training_seed: 0  # Pinned Ultralytics default; unrelated to dataset split seed.
 split_seed_64: 13436313853456744620
-device_policy: cuda:0_required
 train:
   imgsz: 640
   epochs: 100
-  batch: 8  # Predeclared 8 GB RTX 3070 accommodation; not performance-tuned.
+  batch: 8  # Frozen default; only a documented pretraining CUDA OOM permits fallback to 4.
   optimizer: auto  # Ultralytics 8.3.220 default; chooses actual optimizer/LR at trainer setup.
   lr0: 0.01  # Requested package default; ignored when optimizer=auto. Capture effective optimizer LR.
   lrf: 0.01

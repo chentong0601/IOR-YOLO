@@ -1,6 +1,10 @@
-# Install torch==2.5.1+cu121 and torchvision==0.20.1+cu121 separately
-# from the official PyTorch cu121 wheel index on the Windows workstation.
+# Scientific protocol pin: Ultralytics behavior is fixed at 8.3.220.
+# torch/torchvision/CUDA are execution compatibility and runtime provenance.
+# The verified Kaggle pair is torch 2.10.0+cu128 / torchvision 0.25.0+cu128;
+# do not downgrade it merely to reproduce the retired workstation plan.
 ultralytics==8.3.220
-Pillow==11.3.0
-PyYAML==6.0.2
-matplotlib==3.10.6
+# Utility libraries use compatibility ranges; the exact formal runtime is
+# recorded in run_manifest.yaml and pip-freeze.txt.
+Pillow>=10,<12
+PyYAML>=6,<7
+matplotlib>=3.8,<4

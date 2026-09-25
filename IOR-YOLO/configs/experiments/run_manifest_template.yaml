@@ -1,5 +1,5 @@
 # Copy into ignored runs/<experiment_id>/seed_0/run_manifest.yaml; null means pending.
-schema_version: e01-run-manifest-v1
+schema_version: e01-run-manifest-v2
 run_id: null
 experiment_id: e01_yolo11n_seg
 status: not_started
@@ -13,15 +13,34 @@ timestamp_start_utc: null
 timestamp_end_utc: null
 hostname: null
 os: null
+platform: null
+execution_platform: null
+cloud_provider: null
+cloud_session_type: null
+container_image_git_commit: null
+container_image_build_date: null
 python: null
+python_executable: null
 pytorch: null
 torchvision: null
 ultralytics: null
+numpy: null
+opencv: null
+opencv_python: null
 cuda_runtime: null
 gpu: null
 gpu_memory_bytes: null
+gpu_count: null
+visible_gpu_count: null
+gpu_inventory: null
+selected_formal_device: cuda:0
 dataset_doi: 10.17632/gfcmdbvw65.4
 dataset_zip_sha256: 049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce
+raw_source_kind: null
+raw_source_path: null
+raw_identity_status: null
+raw_identity_evidence_sha256: null
+files_sha256_manifest_sha256: 6800285b66c3ed3e5da4fbb201e84698702af20e74dab6fdfb4d262deb83c24d
 frozen_pool_sha256: a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5
 frozen_split_sha256: 0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1
 protocol_yaml_sha256: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870
@@ -55,5 +74,6 @@ validation_metrics_mask: null
 test_metrics_box: null
 test_metrics_mask: null
 results_directory: null
+output_root: null
 prediction_schema: [image_id, pred_instance_id, pred_class, confidence, box, mask_reference, source_group_id, split_guard_cluster_id, split]
 notes: null

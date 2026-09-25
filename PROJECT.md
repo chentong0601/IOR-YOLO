@@ -1,6 +1,6 @@
 # Project State
 
-更新：2026-09-20。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
+更新：2026-09-25。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
 
 ## Project Goal
 
@@ -8,7 +8,7 @@
 
 ## Current Stage
 
-**Stage 3C执行冻结与工作站交接已完成；E01 CONFIG = VERIFIED，E01 ANALYSIS PIPELINE = READY，E01 = READY TO RUN，尚未COMPLETED。** D2协议和划分保持冻结；正式E01训练/Val/Test均尚未开始。Windows RTX 3070现场仍须依次通过Git、环境、CUDA、raw、派生数据、配置、官方权重及tiny smoke检查，并由用户决定启动。
+**Stage 3D执行环境已按实际Kaggle运行时完成训练前纠偏；E01 Kaggle Execution Environment = READY FOR PRE-FLIGHT，FORMAL TRAINING = NOT STARTED。** D2协议和划分保持冻结；正式E01训练/Val/Test均尚未开始。Kaggle单GPU `device=0`为当前正式路径，Google Colab与Windows RTX 3070为备用。Kaggle目录结构检查已通过；解包内容仍须在Notebook运行逐文件身份门，当前`RAW CONTENT IDENTITY = NOT YET VERIFIED`。
 
 Stage 1与Stage 2A Dataset Feasibility Gate已通过。2B-5P候选方案经用户审核确认，已按[正式冻结协议](docs/dataset-freeze-d2.md)完成两次确定性重建与验证。Stage 2B-4H的21案人工决定及1112个evidence-based source groups继续有效。官方split已确认泄漏，不可用于正式评价；现已冻结guard-aware 70/15/15划分。
 
@@ -54,9 +54,11 @@ Stage 2B-4V 的**独立重建**完全复现 1114 组的成员与组号；Conserv
 
 **E01主Baseline：官方预训练YOLO11n-seg，instance segmentation；READY TO RUN，未正式训练。** 原始D2逐实例polygon保留为YOLO segmentation标签，同时可评估box/mask。冻结派生集1099图，Ultralytics官方loader三split均成功读取且0损坏；模型在Mac完成无权重的CPU构建/极小前向。固定配置见[实验配置](IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml)，受控流程见[E01协议](docs/e01-baseline-protocol.md)。YOLOv8n-seg仅是未来可讨论的compatibility baseline；其他Stage 1候选保留历史研究记录，不属于当前E01任务。
 
-训练前核对固定Ultralytics 8.3.220源码后，将先前候选的显式`SGD/lr0=.01`更正为官方默认机制`optimizer=auto`；trainer会忽略请求的lr0和momentum，实际优化器/LR须由正式run记录。batch8是RTX 3070预设显存约束，仅在训练前短smoke证实OOM时允许留痕降至4；100 epoch是上限，Val可选best，Test不得用于选择。见[锁定版本默认与对照](docs/e01-ultralytics-83220-defaults.md)。已准备[Val优先的分析协议](docs/e01-analysis-protocol.md)、逐实例匹配、阶段错误、失败案例导出、真实结果图及NA论文表；Test要求`--final-test`且必须已有正式最终评价记录。**这些代码尚未读取正式实验输出，也没有性能结论。**
+训练前核对固定Ultralytics 8.3.220源码后，将先前候选的显式`SGD/lr0=.01`更正为官方默认机制`optimizer=auto`；trainer会忽略请求的lr0和momentum，实际优化器/LR须由正式run记录。batch8是冻结默认，仅在训练前tiny CUDA smoke证实OOM时允许留痕降至4；100 epoch是上限，Val可选best，Test不得用于选择。见[锁定版本默认与对照](docs/e01-ultralytics-83220-defaults.md)。已准备[Val优先的分析协议](docs/e01-analysis-protocol.md)、逐实例匹配、阶段错误、失败案例导出、真实结果图及NA论文表；Test要求`--final-test`且必须已有正式最终评价记录。**这些代码尚未读取正式实验输出，也没有性能结论。**
 
-Stage 3C已冻结唯一执行包：官方预训练`YOLO11n-seg`、instance segmentation、640、最多100 epochs、batch8、optimizer auto、训练seed0、D2冻结70/15/15、Python3.11、PyTorch2.5.1+cu121、torchvision0.20.1+cu121、Ultralytics8.3.220。官方checkpoint只作初始化，下载后核验并在manifest保存文件名、来源、SHA和文件时间，失败即停止，不退回随机初始化。正式训练代码/config/frozen manifests必须来自记录的HEAD；已知无关本地修改可以存在但会完整记录，E01相关路径有未提交变化时runner拒绝启动。Raw ZIP可转移，processed数据必须在Windows重建。交接顺序及完成判据见[工作站清单](docs/e01-workstation-checklist.md)。
+Stage 3C曾按Windows工作站计划冻结执行包：官方预训练`YOLO11n-seg`、instance segmentation、640、最多100 epochs、batch8、optimizer auto、训练seed0、D2冻结70/15/15及Ultralytics8.3.220；当时记录的Python3.11、PyTorch2.5.1+cu121、torchvision0.20.1+cu121现仅属于备用Windows profile。官方checkpoint只作初始化，下载后核验并在manifest保存文件名、来源、SHA和文件时间，失败即停止，不退回随机初始化。正式训练代码/config/frozen manifests必须来自记录的HEAD；已知无关本地修改可以存在但会完整记录，E01相关路径有未提交变化时runner拒绝启动。Raw ZIP可转移，processed数据必须在正式平台重建。交接顺序及完成判据见[工作站清单](docs/e01-workstation-checklist.md)。
+
+Stage 3D只改变执行环境：已人工验证的Kaggle候选正式运行时为Python3.12.13、PyTorch2.10.0+cu128、torchvision0.25.0+cu128、Ultralytics8.3.220、NumPy2.0.2、opencv-python4.13.0.92、CUDA12.8和Tesla T4；两块GPU可见但E01固定`device=0`，不启用DDP。torch/torchvision/CUDA作为运行provenance记录，不再强制降级到旧Windows栈。Kaggle已自动解包Raw ZIP，不能重算原ZIP hash；正式重建前须以全部2812张图及六份JSON的字节证据验证内容身份。run manifest记录实际平台、Python executable、软件版本、容器、GPU清单/选定设备、数据身份和输出路径。完整步骤见[Kaggle E01交接](docs/kaggle-e01-training-setup.md)；[Windows步骤](docs/windows-e01-training-setup.md)保留为备用。
 
 ## Proposed Method Status
 
@@ -97,7 +99,7 @@ Stage 3C已冻结唯一执行包：官方预训练`YOLO11n-seg`、instance segme
 - 用户已完成Stage 2B-4H的21案人工裁决。C01/C02合组，B01/B02及S01–S10接受，D01–D03保留标注冲突，R01–R03排除dataset-provided resize，U01仅将未知区域排除出派生有效三类目标。已重建候选source groups；Raw Data与正式split未改变，D2仍Not Frozen。
 - 用户授权Stage 2B-5P仅准备可冻结候选协议。已构建独立于source group的guard clusters、候选representation manifest与单次确定性模拟；严格Policy B及无base组处置是助手建议，**尚非用户确认的最终Freeze决定**。未产生正式split或选择最终seed。
 - 用户随后明确确认Stage 2B-5：严格Policy B、6无base组排除、U01普通背景FP语义、70/15/15、SHA+固定上下文seed以及guard cluster划分规则。已生成冻结manifest并通过两次逐字节重建及关系检查，**D2协议与划分FROZEN**；此前2B-5P条目保留为当时状态。
-- 用户授权Stage 3A仅准备E01：以冻结manifest转换出1099张逐实例分割派生集，确定YOLO11n-seg、固定训练配置与运行记录，验证后交给用户在Windows RTX 3070上可见执行正式训练；不得按模型性能改变冻结split。本机MacBook Air M5/16 GB用于开发、转换与极小CPU/MPS smoke；无独显联想机不作训练平台；RTX 3070工作站稍后用于全部正式训练、验证与最终测试。所有跟踪脚本和配置使用跨平台相对路径或`pathlib`，Mac不安装CUDA。
+- 用户授权Stage 3A仅准备E01：以冻结manifest转换出1099张逐实例分割派生集，确定YOLO11n-seg、固定训练配置与运行记录；Stage 3D后由用户优先在Kaggle单GPU可见执行正式训练，Google Colab与Windows RTX 3070作备用。不得按平台或模型性能改变冻结split及E01科研参数。本机MacBook Air M5/16 GB仍用于开发、转换与极小CPU/MPS smoke；无独显联想机不作训练平台。所有跟踪脚本和配置使用跨平台相对路径、`pathlib`或显式输出根目录，Mac不安装CUDA。
 
 ## Rejected Ideas
 
@@ -105,4 +107,4 @@ Stage 3C已冻结唯一执行包：官方预训练`YOLO11n-seg`、instance segme
 
 ## Next Actions
 
-Stage 3C已达到**E01 EXECUTION = FROZEN；E01 READY TO RUN，不是COMPLETED**。RTX 3070可用后，用户先按[工作站清单](docs/e01-workstation-checklist.md)和[Windows步骤](docs/windows-e01-training-setup.md)完成11步交接；第10步人工检查通过后，才在VS Code Terminal可见启动正式训练。现场CUDA、官方权重和batch8显存可行性尚未验证，任一项失败均停止并记录。最终Test只在训练、固定best、Val和协议锁定后一次运行。尚无正式训练或结果，不进入Stage 4。
+Stage 3D纠偏后状态为**E01 Kaggle Execution Environment = READY FOR PRE-FLIGHT；FORMAL TRAINING = NOT STARTED**。下一步仅在Kaggle执行逐文件Raw Content Identity门；通过后再依次重建/验证derived数据、复核环境与配置、校验官方权重并运行batch8 tiny smoke。任何门禁失败均停止并记录。只有全部preflight通过且用户明确确认，才可启动正式训练；最终Test仍只在训练、固定best、Val和协议锁定后一次运行。不进入Stage 4。

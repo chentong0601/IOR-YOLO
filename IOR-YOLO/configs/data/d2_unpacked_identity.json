@@ -1,0 +1,36 @@
+{
+  "schema_version": "d2-unpacked-identity-v1",
+  "dataset_version": "v4",
+  "source_zip_filename": "dataset-20260508.zip",
+  "source_zip_sha256": "049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce",
+  "files_sha256_manifest": "files_sha256.csv",
+  "files_sha256_manifest_sha256": "6800285b66c3ed3e5da4fbb201e84698702af20e74dab6fdfb4d262deb83c24d",
+  "expected_image_files": 2812,
+  "json_files": {
+    "test.json": {
+      "bytes": 207419,
+      "sha256": "c92e8da937fbfff7a3331a4d762abc65de73978d86ddbd1073aae6eebdd7458f"
+    },
+    "test_resize.json": {
+      "bytes": 212368,
+      "sha256": "d94c9b1f13cc0fc9aeaa9569ca2755cf5e70f4cef77ea692d105c5e9f2dada8d"
+    },
+    "train.json": {
+      "bytes": 936265,
+      "sha256": "3daf301a84d14c434b83ad28a78fc916b0b31c1dcb8cda8820ea1bd5dfc051ac"
+    },
+    "train_resize.json": {
+      "bytes": 958537,
+      "sha256": "9bd1ed76faf7cdf23f442c1da9d7d1da60e261054289d873e335bf65936d7a01"
+    },
+    "val.json": {
+      "bytes": 90702,
+      "sha256": "308d8a16320b99c91347991236911198e98c90817137a7cdaf76adeaabedea1e"
+    },
+    "val_resize.json": {
+      "bytes": 92862,
+      "sha256": "53d3039ded8a4791529dc507e87e7832faa08ba1510adf4e0f14550b0eef3a06"
+    }
+  },
+  "evidence_note": "Image hashes come from the tracked Stage 2B-3 files_sha256.csv; JSON byte hashes were computed read-only from the frozen original ZIP. This sidecar verifies unpacked content and does not replace or modify the frozen D2 protocol."
+}
