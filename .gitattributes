@@ -1,0 +1,12 @@
+# Cross-platform provenance for frozen E01 scientific artifacts.
+# These files are pinned by exact SHA256 in IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml
+# and/or IOR-YOLO/configs/data/d2_frozen_protocol.yaml (frozen_csv_sha256 map), and re-verified
+# by IOR-YOLO/scripts/15_e01_run.py.load_config() and
+# IOR-YOLO/scripts/21_e01_local_engineering.py.verified_formal_config().
+# The system core.autocrlf=true would otherwise rewrite their bytes to CRLF on Windows checkouts
+# and break the validation even though the committed Git blobs are unchanged. Forcing LF here
+# keeps the worktree bytes byte-identical to the canonical Git blobs on every platform.
+IOR-YOLO/data/manifests/d2_experiment_pool_frozen.csv text eol=lf
+IOR-YOLO/data/manifests/d2_split_frozen.csv text eol=lf
+IOR-YOLO/data/manifests/d2_exclusions_frozen.csv text eol=lf
+IOR-YOLO/configs/data/d2_frozen_protocol.yaml text eol=lf
