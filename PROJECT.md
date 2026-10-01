@@ -60,6 +60,8 @@ Stage 3C曾按Windows工作站计划冻结执行包：官方预训练`YOLO11n-se
 
 Stage 3D只改变执行环境：已人工验证的Kaggle候选正式运行时为Python3.12.13、PyTorch2.10.0+cu128、torchvision0.25.0+cu128、Ultralytics8.3.220、NumPy2.0.2、opencv-python4.13.0.92、CUDA12.8和Tesla T4；两块GPU可见但E01固定`device=0`，不启用DDP。torch/torchvision/CUDA作为运行provenance记录，不再强制降级到旧Windows栈。Kaggle已自动解包Raw ZIP，不能重算原ZIP hash；正式重建前须以全部2812张图及六份JSON的字节证据验证内容身份。run manifest记录实际平台、Python executable、软件版本、容器、GPU清单/选定设备、数据身份和输出路径。完整步骤见[Kaggle E01交接](docs/kaggle-e01-training-setup.md)；[Windows步骤](docs/windows-e01-training-setup.md)保留为备用。
 
+Local-first工程路径已并入：独立的[工程 profile](IOR-YOLO/configs/development/e01_local_engineering.yaml)与[本地 runner](IOR-YOLO/scripts/21_e01_local_engineering.py)提供`local-smoke`与`local-quick`，只从frozen Train/Val确定性采样小子集（4/2与24/12张），dataset YAML不含Test键，输出写入`data/processed/e01_engineering/`与`runs/e01_engineering/`，并标记**ENGINEERING VALIDATION ONLY - NOT FOR PAPER**。它不覆写正式配置、frozen D2 artifacts或split，正式runner不能接收工程checkpoint。工程验证只检验软件路径，不产生科研结论，也不改变正式协议。命令与边界见[本地开发说明](docs/e01-local-development.md)。
+
 ## Proposed Method Status
 
 未设计或实现正式方法。Ordinal/CPIP不构成已确认创新；原工程说明书继续作为Candidate Design v0。**Formal experiments：Not started**。

@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "E01: Run Low-Cost Tests",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-m", "unittest", "discover", "-s", "IOR-YOLO/tests", "-v"],
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "E01: Build Derived Dataset",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py", "build"],
+      "problemMatcher": []
+    },
+    {
+      "label": "E01: CPU Smoke",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["IOR-YOLO/scripts/21_e01_local_engineering.py", "local-smoke", "--device", "cpu"],
+      "problemMatcher": []
+    },
+    {
+      "label": "E01: CPU Quick Validation",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["IOR-YOLO/scripts/21_e01_local_engineering.py", "local-quick", "--device", "cpu"],
+      "problemMatcher": []
+    },
+    {
+      "label": "E01: Check Git/Protocol",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["IOR-YOLO/scripts/21_e01_local_engineering.py", "check-protocol"],
+      "problemMatcher": []
+    },
+    {
+      "label": "E01: Prepare Cloud Preflight",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "IOR-YOLO/scripts/21_e01_local_engineering.py",
+        "preflight",
+        "--device",
+        "cuda:0",
+        "--profile",
+        "local-quick"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

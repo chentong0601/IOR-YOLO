@@ -48,6 +48,8 @@ E01_GIT_PATHS = (
     "IOR-YOLO/scripts/18_export_e01_predictions.py",
     "IOR-YOLO/scripts/19_verify_d2_unpacked.py",
     "IOR-YOLO/scripts/20_kaggle_e01_preflight.py",
+    "IOR-YOLO/configs/development/e01_local_engineering.yaml",
+    "IOR-YOLO/scripts/21_e01_local_engineering.py",
 )
 spec = importlib.util.spec_from_file_location("e01_dataset", Path(__file__).with_name("13_build_e01_ultralytics_dataset.py"))
 dataset = importlib.util.module_from_spec(spec)
@@ -155,11 +157,19 @@ def git_state() -> dict:
             "experiment_relevant_dirty": bool(relevant), "experiment_relevant_status": relevant}
 
 
+def formal_model_name(config: dict | None = None) -> str:
+    """Pin formal initialization to the official pretrained yolo11n-seg.pt."""
+    config = config or load_config()
+    if config["model"] != "yolo11n-seg.pt" or config["pretrained"] is not True:
+        raise ValueError("formal E01 must initialize from official pretrained yolo11n-seg.pt")
+    return config["model"]
+
+
 def pretrained_weight_record(model=None) -> tuple[object, dict]:
     from ultralytics import YOLO
-    model = model or YOLO(load_config()["model"])
+    model = model or YOLO(formal_model_name())
     path = Path(getattr(model, "ckpt_path", "") or "")
-    if not path.is_file():
+    if not path.is_file() or path.name != "yolo11n-seg.pt":
         raise RuntimeError("official YOLO11n-seg pretrained checkpoint is unavailable; stop without random initialization")
     return model, {"filename": path.name,
                    "source": "Ultralytics official yolo11n-seg.pt loaded by ultralytics==8.3.220",

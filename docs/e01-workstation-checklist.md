@@ -2,6 +2,8 @@
 
 本清单仅用于备用Windows路径；当前正式执行平台是Kaggle。
 
+> **已被取代的执行目标。** 当前本地工程验证以Mac为主，CUDA验证与正式E01在Kaggle/cloud进行。Windows CPU仅作可选兼容性检查。现行命令见[本地开发说明](e01-local-development.md)与[Kaggle交接](kaggle-e01-training-setup.md)；本清单保留作历史与来源记录。
+
 ## Before Training
 
 - [ ] Checkout/pull the reviewed E01 commit; record `git rev-parse HEAD`.

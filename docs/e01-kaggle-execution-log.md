@@ -48,3 +48,27 @@ The user subsequently supplied results from the actual Kaggle Notebook. The exac
 | Formal training | NOT STARTED |
 
 The next runner failure attempted to open the repository-local ZIP rather than the verified Kaggle unpacked source. It is recorded as **Kaggle preflight runner source-resolution defect**, not Raw Identity failure. Stage 3E-1 adds the corrected source resolver and the one-command preflight; its weight and CUDA-smoke results remain pending a new committed Kaggle run.
+
+## Local-first E01 engineering validation (integrated)
+
+- Date: 2026-10-01
+- Status: engineering workflow and code integrated onto the Stage 3E-1 line; no CUDA/Kaggle execution started from this entry.
+- Scientific protocol changes: **NONE**.
+- Formal E01 training: **NOT STARTED**.
+- Formal Val: **NOT STARTED**.
+- Final Test: **NOT ACCESSED**.
+- Stage 4: **NOT STARTED**.
+
+This entry records workflow integration, not an experiment. No Kaggle runtime, GPU job, smoke training, formal training or evaluation result is claimed here.
+
+Local engineering validation runs through a separate, isolated entry point: `IOR-YOLO/scripts/21_e01_local_engineering.py` with `IOR-YOLO/configs/development/e01_local_engineering.yaml`. It offers only `local-smoke` and `local-quick`, samples a deterministic Train/Val subset (4/2 and 24/12 images), never exposes a Test split, writes to the engineering output namespace, and is labelled **ENGINEERING VALIDATION ONLY - NOT FOR PAPER**. It cannot initialize or be initialized by the formal run.
+
+The intended future Kaggle sequence is:
+
+1. Check the pinned Python/CUDA/PyTorch/torchvision/Ultralytics environment.
+2. Rebuild and validate the frozen derived dataset from the raw D2 source and frozen manifests using explicit `/kaggle/...` paths.
+3. Run the one-command preflight `20_kaggle_e01_preflight.py`, which stops at `READY FOR HUMAN CONFIRMATION`.
+4. Optionally run one small engineering `local-quick --device cuda:0` Train/Val/prediction/analysis cycle, keeping every output under the engineering-only location.
+5. Stop for user review and authorization before the separate formal training command.
+
+Exact commands and path variables are maintained in [`kaggle-e01-training-setup.md`](kaggle-e01-training-setup.md) and [`e01-local-development.md`](e01-local-development.md). This log must only be extended with observed command, environment, data, output and error details after an actual user-visible run. Do not insert planned results as observed results.

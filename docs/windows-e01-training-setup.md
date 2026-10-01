@@ -2,6 +2,18 @@
 
 Windows RTX 3070现为Kaggle不可用时的备用执行平台，不是当前选定的E01正式环境。以下命令在**PowerShell**中从仓库根目录执行。机器执行清单见[工作站 checklist](e01-workstation-checklist.md)。科研协议与Kaggle方案相同；任一步失败即停止，不自动越过第10步。
 
+> **已被取代的执行目标。** 当前本地工程验证以Mac为主，CUDA验证与正式E01在Kaggle/cloud进行。Windows CPU仅作可选兼容性检查。现行命令见[本地开发说明](e01-local-development.md)与[Kaggle交接](kaggle-e01-training-setup.md)；下方RTX 3070正式训练步骤保留作历史记录。
+
+可选Windows CPU兼容性检查（PowerShell，仓库根目录）：
+
+```powershell
+python IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py build --archive "D:\datasets\dataset-20260508.zip"
+python IOR-YOLO/scripts/21_e01_local_engineering.py local-smoke --device cpu --archive "D:\datasets\dataset-20260508.zip"
+python IOR-YOLO/scripts/21_e01_local_engineering.py local-quick --device cpu --archive "D:\datasets\dataset-20260508.zip"
+```
+
+这仅是路径/CLI/dataloader/checkpoint兼容性检查，不是正式训练机器；不要在该CPU机器上尝试100 epoch训练。
+
 1. 在工作站安装/更新NVIDIA驱动、Conda、Git和GitHub CLI；在PowerShell执行`nvidia-smi`，确认RTX 3070与可用显存。PyTorch CUDA 12.1 wheel自带对应运行时，不要求单独安装完整CUDA Toolkit；驱动仍须兼容。安装来源及对应torch/vision版本见[PyTorch官方历史安装表](https://docs.pytorch.org/get-started/previous-versions/)。如果`nvidia-smi`或后续CUDA检查失败，先解决驱动/环境，不运行E01。
 
 2. **Step 1 — Git verification。** 用户通过GitHub官方交互授权并clone/pull已审核提交。实验相关脚本、配置、requirements和冻结manifest必须来自提交版本；允许用户已知的无关本地修改，但它们不能影响E01。runner会阻止E01相关路径存在未提交变化，并把HEAD及完整`git status --porcelain`写入manifest。不要把密码或Token放入项目或聊天。新机器可执行：
