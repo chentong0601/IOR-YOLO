@@ -2,6 +2,8 @@
 
 Kaggle Notebook是当前E01正式执行平台。Google Colab与Windows RTX 3070仅作备用。平台迁移不改变D2冻结协议、冻结划分或E01科研参数。
 
+执行尝试及门禁结果记录在[E01 Kaggle execution log](e01-kaggle-execution-log.md)。真实Kaggle会话已经确认2812张JPEG、6份JSON及冻结769/165/165派生划分；之后暴露的问题是旧runner错误回退到本地ZIP，已在Stage 3E-1修复为统一source resolution。正式训练仍未开始。
+
 ## 三层控制
 
 1. **Scientific experiment protocol**：D2冻结数据与70/15/15 group-aware split、YOLO11n-seg、instance segmentation、`imgsz=640`、最多100 epochs、batch8、`optimizer=auto`、seed0、既有augmentation、Val/Test lock及指标定义。这些是受控科研变量，本次全部不变。
@@ -34,11 +36,11 @@ Kaggle Notebook是当前E01正式执行平台。Google Colab与Windows RTX 3070�
 /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508
 ```
 
-Kaggle已自动解包上传的`dataset-20260508.zip`。当前1041/126/239张original、对应1406张resize和六份JSON仅证明：
+Kaggle已自动解包上传的`dataset-20260508.zip`。目录数量最初只证明Structure Check；后续真实Kaggle逐字节门禁已经证明：
 
 ```text
 D2 STRUCTURE CHECK = PASS
-RAW CONTENT IDENTITY = NOT YET VERIFIED
+RAW CONTENT IDENTITY = VERIFIED
 ```
 
 原ZIP本身不在挂载目录中，因此不能直接重算固定ZIP SHA256，也不得重新打包目录后比较新ZIP hash。新的ZIP会因元数据、时间、压缩和顺序不同而产生不同字节。
@@ -48,7 +50,7 @@ RAW CONTENT IDENTITY = NOT YET VERIFIED
 - `files_sha256.csv`中的全部2812张JPEG逐文件字节数与SHA256；
 - `d2_unpacked_identity.json`中从固定原ZIP只读提取的六份JSON字节数与SHA256。
 
-只有下列命令实际返回`status: VERIFIED`，才可把Kaggle解包内容视为固定D2来源的内容等价表示：
+真实Kaggle会话已运行该门禁并返回`status: VERIFIED`。每个新临时session仍由单命令preflight重新核验：
 
 ```bash
 /usr/bin/python3 IOR-YOLO/scripts/19_verify_d2_unpacked.py --root /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508
@@ -56,87 +58,53 @@ RAW CONTENT IDENTITY = NOT YET VERIFIED
 
 这项验证检查全部图像和annotation JSON的字节，不依赖文件数量、文件名或目录结构单独作结论，也不修改冻结manifest。
 
-## Preflight顺序
+## Session bootstrap
 
-正式训练前按顺序执行；任何一步失败即停止。
-
-### 1. Git与运行路径
-
-正式Notebook必须来自已审核且已提交的Git HEAD。记录：
+Git bundle恢复完成后，先进入仓库根目录。Kaggle镜像已经具备已验证torch/torchvision/CUDA时，不要降级或替换它们。如果Ultralytics缺失或不是8.3.220，只执行以下独立bootstrap；`--no-deps`避免它静默修改torch、torchvision或CUDA相关包：
 
 ```bash
-git status --short
-git rev-parse HEAD
+/usr/bin/python3 -m pip install --no-deps ultralytics==8.3.220
 ```
 
-在Notebook Python cell设置只读raw来源和可写输出：
+若随后环境检查报告其他依赖缺失或版本不兼容，停止并报告，不在科研验证逻辑里隐藏安装。
 
-```python
-import os
+## One-command preflight
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["E01_RAW_SOURCE"] = "/kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508"
-os.environ["E01_RUNS_ROOT"] = "/kaggle/working/ior-yolo-output/runs"
-```
-
-`/kaggle/input`只读；derived dataset、日志、checkpoint和分析输出必须写入`/kaggle/working`。
-
-### 2. 已验证环境复核
-
-不安装、不卸载、不降级包。先核验当前环境和依赖一致性：
+正式训练前通常只运行下面一个可见Kaggle cell；任何门禁失败时脚本非零退出并停止，不会调用正式train、Val或Test：
 
 ```bash
-/usr/bin/python3 -m pip check
-/usr/bin/python3 IOR-YOLO/scripts/14_check_training_environment.py --require-cuda --platform kaggle
+/usr/bin/python3 IOR-YOLO/scripts/20_kaggle_e01_preflight.py --source /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508 --platform kaggle --batch 8
 ```
 
-环境脚本报告Python executable、torch、torchvision、Ultralytics、NumPy、OpenCV、CUDA runtime、GPU inventory、visible GPU count和选定`cuda:0`。`requirements-e01.txt`保留Ultralytics行为pin，torch/torchvision使用实际运行provenance，不触发无依据的降级。
+它按顺序检查Git provenance和E01相关dirty状态、Raw Identity、派生集重建/验证、冻结split与类别计数、实际环境、resolved config、官方预训练权重及SHA256，并在`device=0`运行一次可丢弃的batch8 CUDA smoke。输出和session provenance保存到：
 
-### 3. Raw content identity
+```text
+/kaggle/working/ior-yolo-output/preflight/
+```
+
+预期最终摘要必须包含`Raw identity: VERIFIED`、`Split: 769/165/165`、`Formal device: cuda:0`、权重SHA、`Batch-8 CUDA smoke: PASS`、`Formal training: NOT STARTED`和`E01 readiness: READY FOR HUMAN CONFIRMATION`。
+
+source解析顺序固定为：显式`--source` > `E01_D2_SOURCE`（兼容旧`E01_RAW_SOURCE`）> 存在的Kaggle正式挂载路径 > 存在的本地审计ZIP；否则明确失败。显式或环境变量选择的路径不存在时不会静默换数据。
+
+## Diagnostic commands
+
+以下命令只用于定位单命令失败，不是常规cell-by-cell工作流：
 
 ```bash
 /usr/bin/python3 IOR-YOLO/scripts/19_verify_d2_unpacked.py --root /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508
+/usr/bin/python3 IOR-YOLO/scripts/14_check_training_environment.py --require-cuda --platform kaggle
+/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py preflight --require-cuda --platform kaggle --source /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508 --derived /kaggle/working/ior-yolo-derived/d2_e01_ultralytics
 ```
 
-必须得到`VERIFIED`。结构数量通过而任一图像或JSON hash不一致时，Raw Identity仍失败，禁止继续。
+官方`yolo11n-seg.pt`只作初始化；获取失败即停止，不回退随机初始化。batch8只有在真实CUDA OOM时才允许另行保留证据后执行既定8→4 fallback，不能依据性能选择。
 
-### 4. Derived dataset重建与验证
+## Human gate与正式命令
 
-不得复制Mac或其他未受控processed目录。直接从已验证的只读解包目录和冻结项目产物重建：
+单命令preflight返回`READY FOR HUMAN CONFIRMATION`后，用户须检查Git、环境、Raw Identity、derived统计、resolved config、权重hash和smoke结果。正式训练仍是单独动作，本Stage 3E-1不执行：
 
 ```bash
-/usr/bin/python3 IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py build --source /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508
-/usr/bin/python3 IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py validate --source /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508
+E01_RUNS_ROOT=/kaggle/working/ior-yolo-output/runs /usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py train --platform kaggle --source /kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508 --derived /kaggle/working/ior-yolo-derived/d2_e01_ultralytics
 ```
-
-结果必须复现正式池1099张和冻结train/val/test 769/165/165；provider原始1041/126/239目录不是正式E01 split。
-
-### 5. Config、权重和CUDA smoke
-
-```bash
-/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py preflight --require-cuda --platform kaggle
-/usr/bin/python3 IOR-YOLO/scripts/16_resolve_e01_config.py
-/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py verify-weights --platform kaggle
-/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py smoke --platform kaggle
-```
-
-官方`yolo11n-seg.pt`只作初始化；记录来源和SHA256，失败时停止，不回退随机初始化。smoke默认batch8；只有真实CUDA OOM时，才允许保留证据并执行既定8→4 fallback：
-
-```bash
-/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py smoke --platform kaggle --batch 4 --oom-note "Pre-training Kaggle CUDA smoke produced OOM at batch 8"
-```
-
-batch变化只处理硬件可行性，不能依据性能选择，正式训练启动后不得改变。
-
-### 6. User gate与正式命令
-
-用户须亲自检查Git、环境、Raw Identity、derived统计、resolved config、权重hash和smoke输出。脚本不会从smoke自动进入训练。全部门禁通过后，正式命令才是：
-
-```bash
-/usr/bin/python3 IOR-YOLO/scripts/15_e01_run.py train --platform kaggle
-```
-
-本Stage 3D任务不执行该命令。
 
 ## 输出持久化与评价顺序
 

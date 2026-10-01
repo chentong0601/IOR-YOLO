@@ -1,6 +1,6 @@
 # Project State
 
-更新：2026-09-25。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
+更新：2026-09-29。跨会话先读本页及 [研究计划与决策记录](研究计划与决策记录.md)。当前阶段的权威状态以决策记录为准；本页是便于衔接的摘要。
 
 ## Project Goal
 
@@ -8,7 +8,7 @@
 
 ## Current Stage
 
-**Stage 3D执行环境已按实际Kaggle运行时完成训练前纠偏；E01 Kaggle Execution Environment = READY FOR PRE-FLIGHT，FORMAL TRAINING = NOT STARTED。** D2协议和划分保持冻结；正式E01训练/Val/Test均尚未开始。Kaggle单GPU `device=0`为当前正式路径，Google Colab与Windows RTX 3070为备用。Kaggle目录结构检查已通过；解包内容仍须在Notebook运行逐文件身份门，当前`RAW CONTENT IDENTITY = NOT YET VERIFIED`。
+**Stage 3E科学数据门已在真实Kaggle环境通过；Stage 3E-1单命令编排已完成本地实现与低成本验证；FORMAL TRAINING = NOT STARTED。** 用户提供的真实Kaggle结果确认bundle transfer、2812张JPEG与6份JSON的Raw Content Identity、冻结769/165/165派生划分及固定运行环境均已验证。随后定位到`15_e01_run.py`仍默认打开本地ZIP的source-resolution defect；该缺陷不属于数据身份失败。当前须先提交并在新Kaggle会话运行单命令preflight，完成官方权重hash与batch8 CUDA smoke，再进入人工确认。详见[Kaggle执行日志](docs/e01-kaggle-execution-log.md)。
 
 Stage 1与Stage 2A Dataset Feasibility Gate已通过。2B-5P候选方案经用户审核确认，已按[正式冻结协议](docs/dataset-freeze-d2.md)完成两次确定性重建与验证。Stage 2B-4H的21案人工决定及1112个evidence-based source groups继续有效。官方split已确认泄漏，不可用于正式评价；现已冻结guard-aware 70/15/15划分。
 
@@ -107,4 +107,4 @@ Stage 3D只改变执行环境：已人工验证的Kaggle候选正式运行时为
 
 ## Next Actions
 
-Stage 3D纠偏后状态为**E01 Kaggle Execution Environment = READY FOR PRE-FLIGHT；FORMAL TRAINING = NOT STARTED**。下一步仅在Kaggle执行逐文件Raw Content Identity门；通过后再依次重建/验证derived数据、复核环境与配置、校验官方权重并运行batch8 tiny smoke。任何门禁失败均停止并记录。只有全部preflight通过且用户明确确认，才可启动正式训练；最终Test仍只在训练、固定best、Val和协议锁定后一次运行。不进入Stage 4。
+下一步只建立Stage 3E-1 Git milestone，并在真实Kaggle中运行`20_kaggle_e01_preflight.py`。该命令会重新确认Git、Raw Identity、冻结派生集、环境和配置，随后校验官方权重并运行batch8 tiny CUDA smoke，最后停在`READY FOR HUMAN CONFIRMATION`。任何门禁失败均停止；只有全部通过且用户明确确认，才可单独启动正式训练。最终Test仍只在训练、固定best、Val和协议锁定后一次运行，不进入Stage 4。

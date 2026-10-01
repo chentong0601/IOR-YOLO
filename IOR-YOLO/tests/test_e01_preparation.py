@@ -64,6 +64,49 @@ class E01PreparationTest(unittest.TestCase):
         self.assertEqual(execution["formal_device"], "cuda:0")
         self.assertTrue(execution["single_gpu_only"])
         self.assertEqual(execution["verified_kaggle_runtime"]["torch"], "2.10.0+cu128")
+        self.assertEqual((config["task"], config["model"], config["training_seed"]),
+                         ("segment", "yolo11n-seg.pt", 0))
+        self.assertEqual((config["train"]["imgsz"], config["train"]["epochs"],
+                          config["train"]["batch"], config["train"]["optimizer"]),
+                         (640, 100, 8, "auto"))
+        smoke_args = runner.smoke_train_args(config, "dataset.yaml", 8)
+        self.assertEqual(smoke_args["device"], 0)
+        self.assertNotIsInstance(smoke_args["device"], (list, tuple))
+
+    def test_source_resolution_precedence_and_fallbacks(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            explicit = root / "explicit"
+            configured = root / "configured"
+            kaggle = root / "kaggle"
+            local = root / "dataset.zip"
+            for path in (explicit, configured, kaggle):
+                path.mkdir()
+            local.write_bytes(b"zip-placeholder")
+            self.assertEqual(runner.resolve_source(
+                explicit, expected_platform="kaggle",
+                environ={"E01_D2_SOURCE": str(configured)},
+                kaggle_default=kaggle, local_default=local), explicit.resolve())
+            self.assertEqual(runner.resolve_source(
+                None, expected_platform="kaggle",
+                environ={"E01_D2_SOURCE": str(configured)},
+                kaggle_default=kaggle, local_default=local), configured.resolve())
+            with self.assertRaisesRegex(FileNotFoundError, "selected by E01_D2_SOURCE"):
+                runner.resolve_source(
+                    None, expected_platform="kaggle",
+                    environ={"E01_D2_SOURCE": str(root / "missing-configured")},
+                    kaggle_default=kaggle, local_default=local)
+            self.assertEqual(runner.resolve_source(
+                None, expected_platform="kaggle", environ={},
+                kaggle_default=kaggle, local_default=local), kaggle.resolve())
+            kaggle.rmdir()
+            self.assertEqual(runner.resolve_source(
+                None, expected_platform="kaggle", environ={},
+                kaggle_default=kaggle, local_default=local), local.resolve())
+            local.unlink()
+            with self.assertRaisesRegex(FileNotFoundError, "D2 source unresolved"):
+                runner.resolve_source(None, expected_platform="kaggle", environ={},
+                                      kaggle_default=kaggle, local_default=local)
 
     def test_real_conversion_and_deterministic_rebuild(self):
         if not e01.DEFAULT_ARCHIVE.is_file():

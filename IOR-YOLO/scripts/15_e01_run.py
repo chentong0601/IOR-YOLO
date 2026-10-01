@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "configs/experiments/e01_yolo11n_seg.yaml"
 TEMPLATE = ROOT / "configs/experiments/run_manifest_template.yaml"
 DATASET = ROOT / "data/processed/d2_e01_ultralytics"
+KAGGLE_SOURCE = Path("/kaggle/input/datasets/tongchen0501/ior-yolo-d2-raw/dataset-20260508")
+KAGGLE_DERIVED = Path("/kaggle/working/ior-yolo-derived/d2_e01_ultralytics")
 RUNS_ROOT = Path(os.environ.get("E01_RUNS_ROOT", ROOT / "runs")).expanduser().resolve()
 RUN_DIR = RUNS_ROOT / "e01_yolo11n_seg/seed_0"
 E01_GIT_PATHS = (
@@ -45,11 +47,11 @@ E01_GIT_PATHS = (
     "IOR-YOLO/scripts/17_analyze_e01_results.py",
     "IOR-YOLO/scripts/18_export_e01_predictions.py",
     "IOR-YOLO/scripts/19_verify_d2_unpacked.py",
+    "IOR-YOLO/scripts/20_kaggle_e01_preflight.py",
 )
 spec = importlib.util.spec_from_file_location("e01_dataset", Path(__file__).with_name("13_build_e01_ultralytics_dataset.py"))
 dataset = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dataset)
-RAW_SOURCE = Path(os.environ.get("E01_RAW_SOURCE", dataset.DEFAULT_ARCHIVE)).expanduser().resolve()
 spec = importlib.util.spec_from_file_location("e01_environment", Path(__file__).with_name("14_check_training_environment.py"))
 environment = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(environment)
@@ -60,6 +62,43 @@ spec.loader.exec_module(resolver)
 
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def resolve_source(explicit: Path | None = None, *, expected_platform: str | None = None,
+                   environ: dict[str, str] | None = None,
+                   kaggle_default: Path = KAGGLE_SOURCE,
+                   local_default: Path | None = None) -> Path:
+    """Resolve D2 without silently substituting a caller-selected source."""
+    env = os.environ if environ is None else environ
+    local_default = dataset.DEFAULT_ARCHIVE if local_default is None else local_default
+    selected = explicit
+    reason = "explicit --source"
+    if selected is None:
+        configured = env.get("E01_D2_SOURCE") or env.get("E01_RAW_SOURCE")
+        if configured:
+            selected, reason = Path(configured), "E01_D2_SOURCE/E01_RAW_SOURCE"
+        elif expected_platform == "kaggle" and kaggle_default.exists():
+            selected, reason = kaggle_default, "verified Kaggle default"
+        elif local_default.exists():
+            selected, reason = local_default, "audited local ZIP fallback"
+        else:
+            raise FileNotFoundError(
+                "D2 source unresolved. Pass --source, set E01_D2_SOURCE, mount "
+                f"{kaggle_default}, or place the audited ZIP at {local_default}."
+            )
+    selected = selected.expanduser().resolve()
+    if not selected.exists() or not (selected.is_dir() or selected.is_file()):
+        raise FileNotFoundError(f"D2 source selected by {reason} does not exist: {selected}")
+    return selected
+
+
+def resolve_derived(explicit: Path | None = None, *, expected_platform: str | None = None,
+                    environ: dict[str, str] | None = None) -> Path:
+    env = os.environ if environ is None else environ
+    configured = explicit or (Path(env["E01_DERIVED_DATASET"]) if env.get("E01_DERIVED_DATASET") else None)
+    if configured is not None:
+        return configured.expanduser().resolve()
+    return (KAGGLE_DERIVED if expected_platform == "kaggle" else DATASET).resolve()
 
 
 def load_config() -> dict:
@@ -84,11 +123,14 @@ def load_config() -> dict:
     return config
 
 
-def preflight(*, require_cuda: bool = False, expected_platform: str | None = None) -> dict:
+def preflight(*, require_cuda: bool = False, expected_platform: str | None = None,
+              source: Path | None = None, derived: Path | None = None) -> dict:
     config = load_config()
+    source = resolve_source(source, expected_platform=expected_platform)
+    derived = resolve_derived(derived, expected_platform=expected_platform)
     resolved = resolver.resolve(CONFIG)
-    converted = dataset.validate_only(RAW_SOURCE, dataset.DEFAULT_MANIFESTS,
-                                      dataset.DEFAULT_PROTOCOL, DATASET)
+    converted = dataset.validate_only(source, dataset.DEFAULT_MANIFESTS,
+                                      dataset.DEFAULT_PROTOCOL, derived)
     hardware = environment.inspect(require_cuda=require_cuda, expected_platform=expected_platform)
     if "error" in hardware:
         raise RuntimeError(hardware["error"])
@@ -99,8 +141,8 @@ def preflight(*, require_cuda: bool = False, expected_platform: str | None = Non
         raise RuntimeError("formal E01 requires cuda:0")
     return {"dataset": converted, "environment": hardware, "experiment_id": config["experiment_id"],
             "optimizer_auto_projection": resolved["optimizer_auto_projection"],
-            "dataset_yaml": str((DATASET / "dataset.yaml").resolve()),
-            "raw_source": str(RAW_SOURCE)}
+            "dataset_yaml": str((derived / "dataset.yaml").resolve()),
+            "derived_dataset": str(derived), "raw_source": str(source)}
 
 
 def git_state() -> dict:
@@ -126,16 +168,27 @@ def pretrained_weight_record(model=None) -> tuple[object, dict]:
                    "local_path": str(path.resolve())}
 
 
-def verify_weights(*, expected_platform: str | None = None) -> dict:
-    preflight(require_cuda=True, expected_platform=expected_platform)
+def smoke_train_args(config: dict, dataset_yaml: str, batch: int) -> dict:
+    args = {key: value for key, value in config["train"].items() if key != "augmentation"}
+    args.update(config["train"]["augmentation"])
+    args.update(data=dataset_yaml, device=0, batch=batch, epochs=1, fraction=0.02,
+                workers=0, val=False, save=False, plots=False)
+    return args
+
+
+def verify_weights(*, expected_platform: str | None = None,
+                   source: Path | None = None, derived: Path | None = None) -> dict:
+    preflight(require_cuda=True, expected_platform=expected_platform, source=source, derived=derived)
     _, record = pretrained_weight_record()
     return {"status": "official_pretrained_weight_verified", **record}
 
 
 def smoke(*, batch: int = 8, oom_note: str | None = None,
-          expected_platform: str | None = None) -> dict:
+          expected_platform: str | None = None, source: Path | None = None,
+          derived: Path | None = None) -> dict:
     """Run a disposable one-epoch/tiny-fraction CUDA feasibility check, never a formal result."""
-    ready = preflight(require_cuda=True, expected_platform=expected_platform)
+    ready = preflight(require_cuda=True, expected_platform=expected_platform,
+                      source=source, derived=derived)
     if batch not in (8, 4) or (batch == 4) != bool(oom_note):
         raise ValueError("smoke uses batch 8; batch 4 requires the prior batch-8 CUDA OOM note")
     state = git_state()
@@ -143,10 +196,7 @@ def smoke(*, batch: int = 8, oom_note: str | None = None,
         raise RuntimeError(f"E01-relevant Git files are uncommitted: {state['experiment_relevant_status']}")
     model, weights = pretrained_weight_record()
     config = load_config()
-    args = {key: value for key, value in config["train"].items() if key != "augmentation"}
-    args.update(config["train"]["augmentation"])
-    args.update(data=ready["dataset_yaml"], device=0, batch=batch, epochs=1, fraction=0.02,
-                workers=0, val=False, save=False, plots=False)
+    args = smoke_train_args(config, ready["dataset_yaml"], batch)
     with tempfile.TemporaryDirectory(prefix="e01-cuda-smoke-") as temp:
         model.train(**args, project=temp, name="batch_feasibility", exist_ok=False)
     return {"status": "CUDA smoke passed; not a formal experiment", "batch": batch,
@@ -177,8 +227,10 @@ def metric_record(metric) -> dict:
 
 
 def train(*, batch_override: int | None = None, oom_note: str | None = None,
-          expected_platform: str | None = None) -> dict:
-    ready = preflight(require_cuda=True, expected_platform=expected_platform)
+          expected_platform: str | None = None, source: Path | None = None,
+          derived: Path | None = None) -> dict:
+    ready = preflight(require_cuda=True, expected_platform=expected_platform,
+                      source=source, derived=derived)
     config = load_config()
     if (batch_override == 4) != bool(oom_note):
         raise ValueError("batch 4 requires a pretraining CUDA OOM note; no note permitted without fallback")
@@ -257,7 +309,7 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None,
                     gpu_inventory=env["gpu_inventory"],
                     selected_formal_device=env["selected_formal_device"],
                     raw_source_kind=ready["dataset"]["raw_source_kind"],
-                    raw_source_path=str(RAW_SOURCE),
+                    raw_source_path=ready["raw_source"],
                     raw_identity_status=ready["dataset"]["raw_identity_status"],
                     raw_identity_evidence_sha256=ready["dataset"].get("raw_identity_evidence_sha256"),
                     derived_dataset_yaml=ready["dataset_yaml"], pretrained_weights_sha256=weight_record["sha256"],
@@ -280,7 +332,8 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None,
 
 
 def evaluate(split: str, *, final_test: bool = False,
-             expected_platform: str | None = None) -> dict:
+             expected_platform: str | None = None, source: Path | None = None,
+             derived: Path | None = None) -> dict:
     if split not in ("val", "test"):
         raise ValueError("only val and test are supported")
     if split == "test" and not final_test:
@@ -289,7 +342,8 @@ def evaluate(split: str, *, final_test: bool = False,
         raise ValueError("--final-test is only valid for test")
     if split == "test":
         print("FINAL TEST EVALUATION — one-time locked evaluation; no model selection")
-    ready = preflight(require_cuda=True, expected_platform=expected_platform)
+    ready = preflight(require_cuda=True, expected_platform=expected_platform,
+                      source=source, derived=derived)
     manifest = read_manifest()
     if sha(RUN_DIR / "resolved_train_config.yaml") != manifest.get("resolved_config_sha256"):
         raise RuntimeError("resolved training config changed after formal run")
@@ -324,6 +378,10 @@ def main() -> None:
     parser.add_argument("--require-cuda", action="store_true", help="enforce the pinned CUDA stack for preflight")
     parser.add_argument("--platform", choices=tuple(environment.PLATFORM_LABELS), default="kaggle",
                         help="formal execution platform; default is the primary Kaggle plan")
+    parser.add_argument("--source", type=Path,
+                        help="D2 original ZIP or verified unpacked directory")
+    parser.add_argument("--derived", type=Path,
+                        help="disposable derived E01 dataset directory")
     parser.add_argument("--batch", type=int, choices=(4, 8), default=8,
                         help="smoke/train: 4 requires documented prior batch-8 CUDA OOM")
     parser.add_argument("--oom-note", help="pretraining OOM evidence/reason when using batch 4")
@@ -331,16 +389,19 @@ def main() -> None:
     args = parser.parse_args()
     if args.final_test and args.command != "test":
         parser.error("--final-test only applies to test")
-    result = (preflight(require_cuda=args.require_cuda,
-                        expected_platform=args.platform if args.require_cuda else None)
+    result = (preflight(require_cuda=args.require_cuda, expected_platform=args.platform,
+                        source=args.source, derived=args.derived)
               if args.command == "preflight" else
-              verify_weights(expected_platform=args.platform) if args.command == "verify-weights" else
-              smoke(batch=args.batch, oom_note=args.oom_note, expected_platform=args.platform)
+              verify_weights(expected_platform=args.platform, source=args.source, derived=args.derived)
+              if args.command == "verify-weights" else
+              smoke(batch=args.batch, oom_note=args.oom_note, expected_platform=args.platform,
+                    source=args.source, derived=args.derived)
               if args.command == "smoke" else
               train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note,
-                    expected_platform=args.platform)
+                    expected_platform=args.platform, source=args.source, derived=args.derived)
               if args.command == "train" else
-              evaluate(args.command, final_test=args.final_test, expected_platform=args.platform))
+              evaluate(args.command, final_test=args.final_test, expected_platform=args.platform,
+                       source=args.source, derived=args.derived))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 
