@@ -50,7 +50,7 @@ def export(run_dir: Path, data_root: Path, *, split: str = "val", final_test: bo
         # conf=.001 follows the pinned 8.3.220 validation threshold; no
         # threshold sweep or test-guided changes are performed here.
         stream = model.predict(source=str(data_root / "images" / split), stream=True,
-                               device=0, imgsz=640, conf=0.001, iou=0.7,
+                               device="cuda:0", imgsz=640, conf=0.001, iou=0.7,
                                save=False, verbose=False)
         for result in stream:
             name = Path(result.path).name

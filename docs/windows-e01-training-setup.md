@@ -1,6 +1,18 @@
 # E01 Windows RTX 3070 frozen handoff
 
-目标平台为Windows工作站RTX 3070。以下命令在**PowerShell**中从仓库根目录执行。机器执行清单见[工作站 checklist](e01-workstation-checklist.md)。本页顺序已经冻结；任一步失败即停止，不自动越过第10步。
+> **Superseded for current execution.** Stage 3E-2 makes Mac local engineering the primary workflow and Kaggle/cloud CUDA the future formal platform. Do not use the historical RTX 3070 formal-training commands below as the current handoff. The Windows Lenovo machine is optional CPU compatibility only; use [local development](e01-local-development.md) and [Kaggle setup](kaggle-e01-training-setup.md).
+
+Optional Windows CPU compatibility check from PowerShell at the repository root:
+
+```powershell
+python IOR-YOLO/scripts/13_build_e01_ultralytics_dataset.py build --archive "D:\datasets\dataset-20260508.zip"
+python IOR-YOLO/scripts/19_e01_local_engineering.py local-smoke --device cpu --archive "D:\datasets\dataset-20260508.zip"
+python IOR-YOLO/scripts/19_e01_local_engineering.py local-quick --device cpu --archive "D:\datasets\dataset-20260508.zip"
+```
+
+This is not a formal training machine. Do not attempt 100-epoch CPU training.
+The following checklist is retained as a historical record of the previous
+Windows RTX 3070 handoff and is superseded by the current Kaggle workflow.
 
 1. 在工作站安装/更新NVIDIA驱动、Conda、Git和GitHub CLI；在PowerShell执行`nvidia-smi`，确认RTX 3070与可用显存。PyTorch CUDA 12.1 wheel自带对应运行时，不要求单独安装完整CUDA Toolkit；驱动仍须兼容。安装来源及对应torch/vision版本见[PyTorch官方历史安装表](https://docs.pytorch.org/get-started/previous-versions/)。如果`nvidia-smi`或后续CUDA检查失败，先解决驱动/环境，不运行E01。
 

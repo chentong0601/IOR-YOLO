@@ -1,0 +1,41 @@
+# Engineering-only runtime profile. Scientific settings remain in
+# ../experiments/e01_yolo11n_seg.yaml and are not modified by this profile.
+profile_id: e01_local_engineering_v1
+status: ENGINEERING VALIDATION ONLY - NOT FOR PAPER
+task: segment
+model: yolo11n-seg.pt
+device_choices:
+  - cpu
+  - mps
+  - cuda:0
+modes:
+  local-smoke:
+    imgsz: 64
+    epochs: 1
+    batch: 1
+    workers: 0
+    train_images: 4
+    val_images: 2
+    validation_during_training: false
+  local-quick:
+    imgsz: 128
+    epochs: 1
+    batch: 2
+    workers: 0
+    train_images: 24
+    val_images: 12
+    validation_during_training: true
+rules:
+  split_access:
+    - train
+    - val
+  test_access: forbidden
+  formal_checkpoint_initialization: forbidden
+  scientific_result_reporting: forbidden
+  inherited_from_formal_config:
+    - optimizer
+    - augmentation
+    - class_mapping
+    - seed
+  runtime_overrides:
+    amp: false

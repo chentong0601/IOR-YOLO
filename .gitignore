@@ -7,6 +7,9 @@ Thumbs.db
 *.swo
 .idea/
 .vscode/
+!.vscode/
+.vscode/*
+!.vscode/tasks.json
 
 # Python environments, caches, build products, and coverage
 .venv/

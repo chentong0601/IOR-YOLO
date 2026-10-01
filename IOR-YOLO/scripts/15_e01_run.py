@@ -26,6 +26,9 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "configs/experiments/e01_yolo11n_seg.yaml"
 TEMPLATE = ROOT / "configs/experiments/run_manifest_template.yaml"
 DATASET = ROOT / "data/processed/d2_e01_ultralytics"
+DEFAULT_ARCHIVE = ROOT / "data/raw/multistage_apple_v4/dataset-20260508.zip"
+DEFAULT_MANIFESTS = ROOT / "data/manifests"
+DEFAULT_PROTOCOL = ROOT / "configs/data/d2_frozen_protocol.yaml"
 RUN_DIR = ROOT / "runs/e01_yolo11n_seg/seed_0"
 E01_GIT_PATHS = (
     "IOR-YOLO/configs/data/d2_frozen_protocol.yaml",
@@ -41,7 +44,10 @@ E01_GIT_PATHS = (
     "IOR-YOLO/scripts/16_resolve_e01_config.py",
     "IOR-YOLO/scripts/17_analyze_e01_results.py",
     "IOR-YOLO/scripts/18_export_e01_predictions.py",
+    "IOR-YOLO/configs/development/e01_local_engineering.yaml",
+    "IOR-YOLO/scripts/19_e01_local_engineering.py",
 )
+FORMAL_DEVICE = "cuda:0"
 spec = importlib.util.spec_from_file_location("e01_dataset", Path(__file__).with_name("13_build_e01_ultralytics_dataset.py"))
 dataset = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dataset)
@@ -75,11 +81,17 @@ def load_config() -> dict:
     return config
 
 
-def preflight(*, require_cuda: bool = False) -> dict:
+def preflight(
+    *,
+    require_cuda: bool = False,
+    archive: Path = DEFAULT_ARCHIVE,
+    manifest_dir: Path = DEFAULT_MANIFESTS,
+    protocol: Path = DEFAULT_PROTOCOL,
+    derived_root: Path = DATASET,
+) -> dict:
     config = load_config()
     resolved = resolver.resolve(CONFIG)
-    converted = dataset.validate_only(dataset.DEFAULT_ARCHIVE, dataset.DEFAULT_MANIFESTS,
-                                      dataset.DEFAULT_PROTOCOL, DATASET)
+    converted = dataset.validate_only(archive, manifest_dir, protocol, derived_root)
     hardware = environment.inspect(require_cuda=require_cuda)
     if "error" in hardware:
         raise RuntimeError(hardware["error"])
@@ -89,7 +101,8 @@ def preflight(*, require_cuda: bool = False) -> dict:
         raise RuntimeError("formal E01 requires cuda:0")
     return {"dataset": converted, "environment": hardware, "experiment_id": config["experiment_id"],
             "optimizer_auto_projection": resolved["optimizer_auto_projection"],
-            "dataset_yaml": str((DATASET / "dataset.yaml").resolve())}
+            "dataset_yaml": str((derived_root / "dataset.yaml").resolve()),
+            "archive": str(archive.resolve()), "derived_root": str(derived_root.resolve())}
 
 
 def git_state() -> dict:
@@ -104,9 +117,9 @@ def git_state() -> dict:
 
 def pretrained_weight_record(model=None) -> tuple[object, dict]:
     from ultralytics import YOLO
-    model = model or YOLO(load_config()["model"])
+    model = model or YOLO(formal_model_name())
     path = Path(getattr(model, "ckpt_path", "") or "")
-    if not path.is_file():
+    if not path.is_file() or path.name != "yolo11n-seg.pt":
         raise RuntimeError("official YOLO11n-seg pretrained checkpoint is unavailable; stop without random initialization")
     return model, {"filename": path.name,
                    "source": "Ultralytics official yolo11n-seg.pt loaded by ultralytics==8.3.220",
@@ -115,15 +128,27 @@ def pretrained_weight_record(model=None) -> tuple[object, dict]:
                    "local_path": str(path.resolve())}
 
 
-def verify_weights() -> dict:
-    preflight(require_cuda=True)
+def formal_model_name(config: dict | None = None) -> str:
+    config = config or load_config()
+    if config["model"] != "yolo11n-seg.pt" or config["pretrained"] is not True:
+        raise ValueError("formal E01 must initialize from official pretrained yolo11n-seg.pt")
+    return config["model"]
+
+
+def verify_weights(**data_paths) -> dict:
+    preflight(require_cuda=True, **data_paths)
     _, record = pretrained_weight_record()
     return {"status": "official_pretrained_weight_verified", **record}
 
 
-def smoke(*, batch: int = 8, oom_note: str | None = None) -> dict:
+def smoke(
+    *,
+    batch: int = 8,
+    oom_note: str | None = None,
+    **data_paths,
+) -> dict:
     """Run a disposable one-epoch/tiny-fraction CUDA feasibility check, never a formal result."""
-    ready = preflight(require_cuda=True)
+    ready = preflight(require_cuda=True, **data_paths)
     if batch not in (8, 4) or (batch == 4) != bool(oom_note):
         raise ValueError("smoke uses batch 8; batch 4 requires the prior batch-8 CUDA OOM note")
     state = git_state()
@@ -133,7 +158,7 @@ def smoke(*, batch: int = 8, oom_note: str | None = None) -> dict:
     config = load_config()
     args = {key: value for key, value in config["train"].items() if key != "augmentation"}
     args.update(config["train"]["augmentation"])
-    args.update(data=ready["dataset_yaml"], device=0, batch=batch, epochs=1, fraction=0.02,
+    args.update(data=ready["dataset_yaml"], device=FORMAL_DEVICE, batch=batch, epochs=1, fraction=0.02,
                 workers=0, val=False, save=False, plots=False)
     with tempfile.TemporaryDirectory(prefix="e01-cuda-smoke-") as temp:
         model.train(**args, project=temp, name="batch_feasibility", exist_ok=False)
@@ -164,8 +189,13 @@ def metric_record(metric) -> dict:
                           for i, class_id in enumerate(metric.ap_class_index)}}
 
 
-def train(*, batch_override: int | None = None, oom_note: str | None = None) -> dict:
-    ready = preflight(require_cuda=True)
+def train(
+    *,
+    batch_override: int | None = None,
+    oom_note: str | None = None,
+    **data_paths,
+) -> dict:
+    ready = preflight(require_cuda=True, **data_paths)
     config = load_config()
     if (batch_override == 4) != bool(oom_note):
         raise ValueError("batch 4 requires a pretraining CUDA OOM note; no note permitted without fallback")
@@ -190,7 +220,7 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
     args.update(config["train"]["augmentation"])
     if batch_override == 4:
         args["batch"] = 4
-    args.update(data=ready["dataset_yaml"], device=0, project=str(RUN_DIR.parent),
+    args.update(data=ready["dataset_yaml"], device=FORMAL_DEVICE, project=str(RUN_DIR.parent),
                 name=RUN_DIR.name, exist_ok=False, pretrained=True)
     model.train(**args)
     actual_dir = Path(model.trainer.save_dir).resolve()
@@ -252,7 +282,7 @@ def train(*, batch_override: int | None = None, oom_note: str | None = None) -> 
     return {"status": manifest["status"], "run_directory": str(RUN_DIR)}
 
 
-def evaluate(split: str, *, final_test: bool = False) -> dict:
+def evaluate(split: str, *, final_test: bool = False, **data_paths) -> dict:
     if split not in ("val", "test"):
         raise ValueError("only val and test are supported")
     if split == "test" and not final_test:
@@ -261,7 +291,7 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
         raise ValueError("--final-test is only valid for test")
     if split == "test":
         print("FINAL TEST EVALUATION — one-time locked evaluation; no model selection")
-    ready = preflight(require_cuda=True)
+    ready = preflight(require_cuda=True, **data_paths)
     manifest = read_manifest()
     if sha(RUN_DIR / "resolved_train_config.yaml") != manifest.get("resolved_config_sha256"):
         raise RuntimeError("resolved training config changed after formal run")
@@ -277,7 +307,7 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
         raise FileNotFoundError(best)
     from ultralytics import YOLO
 
-    metrics = YOLO(str(best)).val(data=ready["dataset_yaml"], split=split, device=0,
+    metrics = YOLO(str(best)).val(data=ready["dataset_yaml"], split=split, device=FORMAL_DEVICE,
                                    project=str(RUN_DIR), name=evaluation_dir.name,
                                    exist_ok=False, plots=True)
     manifest[f"{'validation' if split == 'val' else 'test'}_metrics_box"] = metric_record(metrics.box)
@@ -293,19 +323,25 @@ def evaluate(split: str, *, final_test: bool = False) -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("preflight", "verify-weights", "smoke", "train", "val", "test"))
-    parser.add_argument("--require-cuda", action="store_true", help="enforce Windows RTX 3070 also for preflight")
+    parser.add_argument("--require-cuda", action="store_true", help="require the pinned CUDA:0 runtime")
     parser.add_argument("--batch", type=int, choices=(4, 8), default=8,
                         help="smoke/train: 4 requires documented prior batch-8 CUDA OOM")
     parser.add_argument("--oom-note", help="pretraining OOM evidence/reason when using batch 4")
     parser.add_argument("--final-test", action="store_true", help="explicitly unlock the one-time final test")
+    parser.add_argument("--archive", type=Path, default=DEFAULT_ARCHIVE)
+    parser.add_argument("--manifest-dir", type=Path, default=DEFAULT_MANIFESTS)
+    parser.add_argument("--protocol", type=Path, default=DEFAULT_PROTOCOL)
+    parser.add_argument("--derived-root", type=Path, default=DATASET)
     args = parser.parse_args()
     if args.final_test and args.command != "test":
         parser.error("--final-test only applies to test")
-    result = (preflight(require_cuda=args.require_cuda) if args.command == "preflight" else
-              verify_weights() if args.command == "verify-weights" else
-              smoke(batch=args.batch, oom_note=args.oom_note) if args.command == "smoke" else
-              train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note)
-              if args.command == "train" else evaluate(args.command, final_test=args.final_test))
+    data_paths = {"archive": args.archive, "manifest_dir": args.manifest_dir,
+                  "protocol": args.protocol, "derived_root": args.derived_root}
+    result = (preflight(require_cuda=args.require_cuda, **data_paths) if args.command == "preflight" else
+              verify_weights(**data_paths) if args.command == "verify-weights" else
+              smoke(batch=args.batch, oom_note=args.oom_note, **data_paths) if args.command == "smoke" else
+              train(batch_override=4 if args.batch == 4 else None, oom_note=args.oom_note, **data_paths)
+              if args.command == "train" else evaluate(args.command, final_test=args.final_test, **data_paths))
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
 

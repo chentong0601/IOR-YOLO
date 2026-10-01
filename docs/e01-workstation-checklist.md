@@ -1,5 +1,7 @@
 # E01 Windows RTX 3070 checklist
 
+> **Historical/superseded execution target.** Current Stage 3E-2 uses Mac for local engineering and Kaggle/cloud for future CUDA validation/formal E01. Windows CPU is optional compatibility only. Follow [local development](e01-local-development.md) and [Kaggle setup](kaggle-e01-training-setup.md) for current commands; this checklist is retained for provenance.
+
 ## Before Training
 
 - [ ] Checkout/pull the reviewed E01 commit; record `git rev-parse HEAD`.

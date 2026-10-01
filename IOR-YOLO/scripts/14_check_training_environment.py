@@ -34,9 +34,8 @@ def inspect(require_cuda: bool = False) -> dict:
     elif result["mps_available"]:
         result["selected_accelerator"] = "mps"
     if require_cuda:
-        if (platform.system() != "Windows" or not result["cuda_available"] or
-                "RTX 3070" not in (result["gpu_name"] or "")):
-            raise RuntimeError(f"E01 formal run requires Windows RTX 3070 CUDA: {result}")
+        if not result["cuda_available"]:
+            raise RuntimeError(f"E01 formal run requires CUDA device 0: {result}")
         if not result["torch"].startswith("2.5.1+") or result["torchvision"] != "0.20.1+cu121":
             raise RuntimeError("PyTorch/torchvision CUDA wheels differ from E01 pin")
         if result["cuda_runtime"] != "12.1" or result["ultralytics"] != "8.3.220":
@@ -48,7 +47,7 @@ def inspect(require_cuda: bool = False) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--require-cuda", action="store_true", help="fail unless pinned Windows RTX 3070 stack is active")
+    parser.add_argument("--require-cuda", action="store_true", help="fail unless the pinned CUDA stack is active")
     args = parser.parse_args()
     print(json.dumps(inspect(args.require_cuda), ensure_ascii=False, indent=2))
 
