@@ -2,6 +2,23 @@
 
 Default is validation only. Test artifacts require --split test --final-test and
 a run manifest that has already recorded the one authorized final test.
+
+Two confidence levels are deliberately kept apart:
+
+* ``predictions/predictions_<split>.csv`` is exported by script 18 as the fixed
+  AP-consistent ``conf=0.001`` stream. It is read here in full and never
+  rewritten, so the raw prediction stream stays available for AP-style work.
+* Operational error analysis (matching, false positives, missed detections,
+  maturity confusion, failure-case selection) uses only predictions at or above
+  the frozen operating threshold ``OPERATING_CONFIDENCE_THRESHOLD`` (0.65),
+  selected on the validation F1 curve before any final test. Formal AP/PR
+  metrics are read from the run manifest and are never recomputed here.
+  A validation re-run at any other threshold is recorded as sensitivity-only
+  (non-official) and can never be reported as the frozen operating point.
+
+Raw-source provenance accepts both the frozen local ZIP and the byte-verified
+unpacked D2 directory used by the Kaggle formal run. All analysis output goes to
+a versioned analysis directory so earlier (exploratory) analysis is preserved.
 """
 
 from __future__ import annotations
@@ -13,6 +30,7 @@ import json
 import math
 import os
 import shutil
+import subprocess
 import warnings
 from collections import Counter
 from pathlib import Path
@@ -31,6 +49,26 @@ MATCH_FIELDS = ("image_id", "gt_instance_id", "gt_class", "pred_instance_id", "p
                 "confidence", "box_iou", "mask_iou", "matched", "split", "source_group_id",
                 "split_guard_cluster_id", "failure_type", "human_review")
 IOU_THRESHOLD = 0.5
+
+# Analysis-layer operating point. The exporter keeps the complete Ultralytics
+# AP-consistent stream (conf=0.001); those 1000+ low-confidence predictions are
+# not detections at the deployed operating point, so counting all of them as
+# false positives is meaningless. 0.65 comes from the validation F1 curve
+# (optimum ~0.652) and was frozen before any final test access.
+ANALYSIS_VERSION = 2
+PREDICTION_EXPORT_CONF = 0.001
+OPERATING_CONFIDENCE_THRESHOLD = 0.65
+THRESHOLD_SELECTION_SPLIT = "val"
+THRESHOLD_SELECTION_BASIS = "validation F1 operating point; frozen before final test"
+
+# Raw-source evidence locations (relative to the repository root).
+SOURCE_ZIP_RELATIVE = Path("data/raw/multistage_apple_v4/dataset-20260508.zip")
+UNPACKED_IDENTITY_RELATIVE = Path("configs/data/d2_unpacked_identity.json")
+FILES_SHA256_RELATIVE = Path("data/manifests/files_sha256.csv")
+FROZEN_PROTOCOL_RELATIVE = Path("configs/data/d2_frozen_protocol.yaml")
+VERIFIED_UNPACKED_KIND = "unpacked_directory"
+VERIFIED_IDENTITY_STATUS = "VERIFIED"
+UNPACKED_IDENTITY_SCHEMA = "d2-unpacked-identity-v1"
 
 
 def digest(path: Path) -> str:
@@ -61,7 +99,97 @@ def checked_split(split: str, final_test: bool, manifest: dict) -> None:
         raise ValueError("--final-test only applies to --split test")
 
 
-def provenance(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> list[str]:
+def raw_source_provenance(manifest: dict, *, repo_root: Path = ROOT) -> tuple[list[str], dict]:
+    """Verify how the formal run obtained its raw D2 images.
+
+    Two modes are accepted and neither is weaker than the other:
+
+    * verified unpacked directory (``raw_source_kind == "unpacked_directory"``
+      with ``raw_identity_status == "VERIFIED"``): the formal run consumed the
+      byte-verified unpacked D2 directory, so no local ``dataset-20260508.zip``
+      is expected. The manifest must instead agree with the tracked frozen
+      protocol *and* the tracked unpacked identity sidecar on the expected
+      source ZIP sha256, the ``files_sha256.csv`` evidence hash and the identity
+      evidence hash. A locally present archive is still hashed and compared.
+    * original ZIP: the manifest pins ``dataset_zip_sha256`` and the frozen
+      archive must exist under ``data/raw/multistage_apple_v4/`` with exactly
+      that digest (previous behaviour, unchanged).
+
+    Only the reason for trusting the raw source changes; every genuine mismatch
+    or missing piece of evidence is still reported as a provenance issue.
+    """
+    zip_path = repo_root / SOURCE_ZIP_RELATIVE
+    identity_path = repo_root / UNPACKED_IDENTITY_RELATIVE
+    files_manifest = repo_root / FILES_SHA256_RELATIVE
+    protocol_path = repo_root / FROZEN_PROTOCOL_RELATIVE
+    kind, status = manifest.get("raw_source_kind"), manifest.get("raw_identity_status")
+    detail = {"raw_source_kind": kind, "raw_identity_status": status,
+              "raw_source_path": manifest.get("raw_source_path"),
+              "dataset_zip_sha256": manifest.get("dataset_zip_sha256"),
+              "expected_source_zip_sha256": None,
+              "raw_identity_evidence_sha256": manifest.get("raw_identity_evidence_sha256"),
+              "files_sha256_manifest_sha256": manifest.get("files_sha256_manifest_sha256"),
+              "local_source_zip_present": zip_path.is_file()}
+    issues: list[str] = []
+    protocol = None
+    if protocol_path.is_file():
+        try:
+            protocol = yaml.safe_load(protocol_path.read_text(encoding="utf-8"))
+        except yaml.YAMLError:
+            issues.append("frozen protocol YAML not readable for raw-source cross-check")
+    if isinstance(protocol, dict):
+        detail["expected_source_zip_sha256"] = protocol.get("zip_sha256")
+        detail["expected_source_zip_filename"] = protocol.get("zip_filename")
+    if kind == VERIFIED_UNPACKED_KIND and status == VERIFIED_IDENTITY_STATUS:
+        detail["mode"] = "verified_unpacked_directory"
+        if not manifest.get("raw_source_path"):
+            issues.append("missing raw_source_path for verified unpacked directory")
+        if not identity_path.is_file():
+            issues.append(f"missing provenance file: {identity_path.name}")
+        else:
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            if identity.get("schema_version") != UNPACKED_IDENTITY_SCHEMA:
+                issues.append("unexpected unpacked identity schema")
+            if manifest.get("raw_identity_evidence_sha256") != digest(identity_path):
+                issues.append("provenance hash mismatch: raw_identity_evidence_sha256")
+            if identity.get("source_zip_sha256"):
+                detail["expected_source_zip_sha256"] = identity["source_zip_sha256"]
+            if not files_manifest.is_file():
+                issues.append(f"missing provenance file: {files_manifest.name}")
+            elif manifest.get("files_sha256_manifest_sha256") != digest(files_manifest):
+                issues.append("provenance hash mismatch: files_sha256_manifest_sha256")
+            elif identity.get("files_sha256_manifest_sha256") != digest(files_manifest):
+                issues.append("unpacked identity and tracked image-hash evidence disagree")
+            elif identity.get("expected_image_files") != len(csv_rows(files_manifest)):
+                issues.append("image-hash evidence cardinality changed")
+            if (identity.get("source_zip_filename") and isinstance(protocol, dict)
+                    and identity["source_zip_filename"] != protocol.get("zip_filename")):
+                issues.append("unpacked identity and frozen protocol disagree on source ZIP filename")
+        expected = detail["expected_source_zip_sha256"]
+        if expected is None:
+            issues.append("cannot cross-check dataset_zip_sha256 against frozen source ZIP sha256")
+        else:
+            if manifest.get("dataset_zip_sha256") != expected:
+                issues.append("provenance hash mismatch: dataset_zip_sha256 (frozen source ZIP)")
+            if isinstance(protocol, dict) and protocol.get("zip_sha256") != expected:
+                issues.append("frozen protocol and unpacked identity disagree on source ZIP sha256")
+        if zip_path.is_file():
+            detail["local_source_zip_sha256"] = digest(zip_path)
+            if detail["local_source_zip_sha256"] != manifest.get("dataset_zip_sha256"):
+                issues.append("provenance hash mismatch: dataset_zip_sha256 (local archive)")
+        return issues, detail
+    if kind == VERIFIED_UNPACKED_KIND:
+        issues.append(f"unpacked raw source is not identity-verified: {status!r}")
+    detail["mode"] = kind or "original_zip"
+    if not zip_path.is_file():
+        issues.append(f"missing provenance file: {zip_path.name}")
+    elif manifest.get("dataset_zip_sha256") != digest(zip_path):
+        issues.append("provenance hash mismatch: dataset_zip_sha256")
+    return issues, detail
+
+
+def provenance_report(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> tuple[list[str], dict]:
+    """Full provenance report as ``(issues, detail)``; legacy issue wording kept."""
     required = ("run_id", "git_commit", "python", "pytorch", "ultralytics", "training_seed",
                 "dataset_zip_sha256", "frozen_pool_sha256", "frozen_split_sha256",
                 "protocol_yaml_sha256", "best_checkpoint_sha256", "resolved_config_sha256")
@@ -70,11 +198,12 @@ def provenance(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> list
         issues.append("E01-relevant Git paths not recorded clean")
     if manifest.get("ultralytics") != "8.3.220" or manifest.get("training_seed") != 0:
         issues.append("pinned Ultralytics/training seed disagreement")
+    source_issues, source_detail = raw_source_provenance(manifest, repo_root=repo_root)
+    issues.extend(source_issues)
     checks = {
-        "dataset_zip_sha256": repo_root / "data/raw/multistage_apple_v4/dataset-20260508.zip",
         "frozen_pool_sha256": repo_root / "data/manifests/d2_experiment_pool_frozen.csv",
         "frozen_split_sha256": repo_root / "data/manifests/d2_split_frozen.csv",
-        "protocol_yaml_sha256": repo_root / "configs/data/d2_frozen_protocol.yaml",
+        "protocol_yaml_sha256": repo_root / FROZEN_PROTOCOL_RELATIVE,
         "best_checkpoint_sha256": run_dir / "weights/best.pt",
         "resolved_config_sha256": run_dir / "resolved_train_config.yaml",
         "experiment_config_sha256": repo_root / "configs/experiments/e01_yolo11n_seg.yaml",
@@ -86,6 +215,14 @@ def provenance(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> list
             issues.append(f"provenance hash mismatch: {field}")
     for message in issues:
         warnings.warn(f"E01 provenance: {message}", UserWarning, stacklevel=2)
+    return issues, {"status": "verified" if not issues else "incomplete",
+                    "raw_source": source_detail,
+                    "checked_files": {field: str(path) for field, path in checks.items()}}
+
+
+def provenance(manifest: dict, run_dir: Path, *, repo_root: Path = ROOT) -> list[str]:
+    """Backward-compatible issue list used by the exporter and other callers."""
+    issues, _ = provenance_report(manifest, run_dir, repo_root=repo_root)
     return issues
 
 
@@ -278,19 +415,101 @@ def read_predictions(run_dir: Path, split: str) -> dict[str, list[dict]]:
     return grouped
 
 
-def analyze(run_dir: Path, data_root: Path, *, split: str = "val", final_test: bool = False) -> dict:
+def threshold_label(threshold: float) -> str:
+    """Filesystem-safe label such as ``0p65`` used in the versioned analysis path."""
+    return f"{float(threshold):.4g}".replace(".", "p")
+
+
+def operating_threshold(split: str, override: float | None = None) -> float:
+    """Resolve the operating confidence threshold for operational error analysis.
+
+    The exporter keeps the complete AP-consistent stream (``conf=0.001``); this
+    threshold only decides which of those predictions count as detections in
+    matching, false-positive/missed counts, maturity confusion and failure-case
+    selection. The frozen operating point is the validation F1 optimum
+    (``OPERATING_CONFIDENCE_THRESHOLD`` = 0.65). Validation may be re-run at
+    another threshold for sensitivity analysis, but the final test must reuse the
+    frozen validation value: test-guided threshold selection is forbidden. A
+    validation override is marked ``sensitivity_only_non_official`` in the report
+    and is never presented as the frozen operating point.
+    """
+    if split == "test":
+        if override is not None and float(override) != OPERATING_CONFIDENCE_THRESHOLD:
+            raise PermissionError(
+                "final test must reuse the validation-frozen operating threshold "
+                f"{OPERATING_CONFIDENCE_THRESHOLD}; test-guided threshold selection is forbidden")
+        return OPERATING_CONFIDENCE_THRESHOLD
+    if override is None:
+        return OPERATING_CONFIDENCE_THRESHOLD
+    value = float(override)
+    if not math.isfinite(value) or not 0.0 < value <= 1.0:
+        raise ValueError("operating confidence threshold must be in (0, 1]")
+    return value
+
+
+def analysis_directory(run_dir: Path, split: str, threshold: float) -> Path:
+    """Versioned analysis directory; the legacy unversioned analysis is never touched."""
+    return run_dir / "analysis" / f"{split}_conf_{threshold_label(threshold)}_v{ANALYSIS_VERSION}"
+
+
+def filter_predictions(groups: dict[str, list[dict]], threshold: float) -> tuple[dict[str, list[dict]], dict]:
+    """Split the exported prediction stream into the operational operating point."""
+    kept: dict[str, list[dict]] = {}
+    exported = 0
+    for name, predictions in groups.items():
+        exported += len(predictions)
+        above = [item for item in predictions if float(item["confidence"]) >= threshold]
+        if above:
+            kept[name] = above
+    retained = sum(len(items) for items in kept.values())
+    return kept, {"prediction_export_conf": PREDICTION_EXPORT_CONF,
+                  "operating_confidence_threshold": threshold,
+                  "exported_predictions": exported, "operational_predictions": retained,
+                  "predictions_below_threshold_excluded": exported - retained,
+                  "prediction_export_modified": False}
+
+
+def git_state(repo_root: Path = ROOT.parent) -> dict:
+    """Current HEAD and worktree state; never raises when Git is unavailable."""
+    def captured(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(["git", *args], cwd=repo_root, capture_output=True, text=True, check=False)
+
+    head, status = captured("rev-parse", "HEAD"), captured("status", "--porcelain=v1", "--untracked-files=all")
+    if head.returncode != 0:
+        return {"available": False, "head": None, "dirty": None, "status": []}
+    lines = status.stdout.splitlines() if status.returncode == 0 else []
+    return {"available": True, "head": head.stdout.strip() or None, "dirty": bool(lines), "status": lines}
+
+
+def analyze(run_dir: Path, data_root: Path, *, split: str = "val", final_test: bool = False,
+            operating_confidence: float | None = None) -> dict:
     manifest = yaml.safe_load((run_dir / "run_manifest.yaml").read_text(encoding="utf-8"))
     checked_split(split, final_test, manifest)
-    issues = provenance(manifest, run_dir)
-    output = run_dir / "analysis"
+    # Threshold lock first: the final test may never pick its own operating point,
+    # so that must fail before any file of the run is read.
+    threshold = operating_threshold(split, operating_confidence)
+    official_point = threshold == OPERATING_CONFIDENCE_THRESHOLD
+    if not official_point:
+        warnings.warn(
+            f"SENSITIVITY-ONLY ANALYSIS: operating confidence {threshold} differs from the frozen "
+            f"official operating point {OPERATING_CONFIDENCE_THRESHOLD}; this analysis is non-official "
+            "and must never be reported as the frozen E01 operating point",
+            UserWarning, stacklevel=2)
+    issues, provenance_detail = provenance_report(manifest, run_dir, repo_root=ROOT)
+    output = analysis_directory(run_dir, split, threshold)
+    legacy_analysis = run_dir / "analysis" / f"analysis_{split}.json"
     if (output / f"analysis_{split}.json").exists():
-        raise FileExistsError("analysis already exists; original analysis must not be silently overwritten")
+        raise FileExistsError(
+            f"versioned analysis already exists ({output.name}); earlier analysis must not be silently overwritten")
     metrics = manifest.get("validation_metrics_box" if split == "val" else "test_metrics_box")
     mask_metrics = manifest.get("validation_metrics_mask" if split == "val" else "test_metrics_mask")
     if not metrics or not mask_metrics:
         raise ValueError("real box AND mask validation/test metrics required; no placeholders")
     training = parse_training_csv(run_dir / "results.csv")
+    # The exported stream is read in full and left untouched; only the operational
+    # operating point below feeds matching, FP/missed counts and failure cases.
     prediction_groups = read_predictions(run_dir, split)
+    operational_groups, operating_point = filter_predictions(prediction_groups, threshold)
     frozen = [r for r in csv_rows(ROOT / "data/manifests/d2_split_frozen.csv") if r["final_split"] == split]
     names = {r["filename"]: r for r in frozen}
     if set(prediction_groups) - set(names):
@@ -300,7 +519,7 @@ def analyze(run_dir: Path, data_root: Path, *, split: str = "val", final_test: b
     matched = []
     for name in sorted(names):
         row = names[name]
-        predictions = prediction_groups.get(name, [])
+        predictions = operational_groups.get(name, [])
         for pred in predictions:
             if (pred["source_group_id"], pred["split_guard_cluster_id"]) != (
                     row["source_group_id"], row["split_guard_cluster_id"]):
@@ -349,16 +568,39 @@ def analyze(run_dir: Path, data_root: Path, *, split: str = "val", final_test: b
             (destination / f"{i:02d}_{Path(record['image_id']).stem}.json").write_text(
                 json.dumps({**record, "human_review": "Needs Human Review"}, ensure_ascii=False, indent=2)+"\n",
                 encoding="utf-8", newline="\n")
+    git = git_state()
     report = {"split":split,"run_id":manifest.get("run_id"),"provenance_warnings":issues,
               "provenance_status":"verified" if not issues else "incomplete",
+              "provenance_detail":provenance_detail,
+              "training_git_commit":manifest.get("git_commit"),
+              "analysis_git_commit":git["head"],"analysis_git_dirty":git["dirty"],
+              "analysis_script_sha256":digest(Path(__file__)),
+              "analysis_version":ANALYSIS_VERSION,"analysis_directory":str(output),
+              "superseded_analysis":str(legacy_analysis) if legacy_analysis.is_file() else None,
+              "prediction_export_conf":PREDICTION_EXPORT_CONF,
+              "operating_confidence_threshold":threshold,
+              "threshold_selection_split":THRESHOLD_SELECTION_SPLIT,
+              "threshold_selection_basis":THRESHOLD_SELECTION_BASIS,
+              "test_guided_threshold_tuning":False,
+              "official_operating_point":official_point,
+              "analysis_classification":("official_frozen_operating_point" if official_point else
+                                         "sensitivity_only_non_official"),
+              "sensitivity_only":not official_point,
+              "requested_operating_confidence":None if official_point else threshold,
+              "operating_point":operating_point,
+              "metrics_source":"formal Ultralytics validation/test metrics read from run_manifest.yaml; "
+                               "not recomputed and not affected by the operating confidence threshold",
               "input_sha256":{"run_manifest":digest(run_dir / "run_manifest.yaml"),
                               "results_csv":digest(run_dir / "results.csv"),
                               "prediction_csv":digest(run_dir / "predictions" / f"predictions_{split}.csv"),
                               "analysis_script":digest(Path(__file__))},
               "box_metrics":metrics,"mask_metrics":mask_metrics,"training":training,
               "maturity":summary,"failure_case_counts":{k:len(v) for k,v in cases.items()},
-              "matching":"class-independent greedy box IoU>=0.5; one-to-one; mask IoU separately",
-              "interpretation":"stage metrics on matched instances only; missed/FP reported separately"}
+              "matching":f"class-independent greedy box IoU>={IOU_THRESHOLD} on confidence>={threshold}; "
+                         "one-to-one; mask IoU separately",
+              "interpretation":(f"{'official' if official_point else 'SENSITIVITY-ONLY/non-official'} "
+                                f"operational analysis at confidence>={threshold}; stage metrics on matched "
+                                "instances only; missed/FP reported separately")}
     (output / f"analysis_{split}.json").write_text(json.dumps(report,ensure_ascii=False,indent=2)+"\n",
                                                      encoding="utf-8",newline="\n")
     plot_actual_results(report, run_dir, output)
@@ -366,13 +608,17 @@ def analyze(run_dir: Path, data_root: Path, *, split: str = "val", final_test: b
 
 
 def plot_actual_results(report: dict, run_dir: Path, output: Path) -> None:
-    """Make figures only from a completed real analysis and run files."""
+    """Make figures only from a completed real analysis and run files.
+
+    Figures are written into the versioned analysis directory so the frozen
+    formal figures copied by the runner into ``run_dir/figures/`` stay untouched.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    figures = run_dir / "figures"
-    figures.mkdir(exist_ok=True)
+    figures = output / "figures"
+    figures.mkdir(parents=True, exist_ok=True)
     training = report["training"]
     for name, curves in (("training_losses", training["loss_curves"]),
                          ("validation_metrics", training["validation_metric_curves"])):
@@ -432,8 +678,16 @@ def main() -> None:
     parser.add_argument("--data-root",type=Path,default=DEFAULT_DATA)
     parser.add_argument("--split",choices=("val","test"),default="val")
     parser.add_argument("--final-test",action="store_true")
+    parser.add_argument("--operating-confidence",type=float,default=None,
+                        help="operating confidence threshold for operational error analysis "
+                             f"(default {OPERATING_CONFIDENCE_THRESHOLD}, the frozen validation F1 "
+                             "point; the final test must reuse it and may not tune on test; any other "
+                             "value is only possible for --split val and is recorded as sensitivity-only "
+                             "/ non-official)")
     args=parser.parse_args()
-    print(json.dumps(analyze(args.run_dir,args.data_root,split=args.split,final_test=args.final_test),ensure_ascii=False,indent=2))
+    print(json.dumps(analyze(args.run_dir,args.data_root,split=args.split,final_test=args.final_test,
+                            operating_confidence=args.operating_confidence),
+                     ensure_ascii=False,indent=2))
 
 
 if __name__=="__main__":

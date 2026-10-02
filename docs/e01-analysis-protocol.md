@@ -4,7 +4,7 @@
 
 ## 产物与来源
 
-正式运行目录为Git忽略的`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`。原生`weights/{best,last}.pt`、`args.yaml`、`results.csv`及`validation/`由固定Ultralytics产生；runner记录`run_manifest.yaml`、实际观测`resolved_train_config.yaml`及`metrics/`、`figures/`。预测导出写`predictions/predictions_val.csv`和逐实例归一化polygon JSON，字段为`image_id,pred_instance_id,pred_class,confidence,box,mask_reference,source_group_id,split_guard_cluster_id,split`。匹配后写`analysis/matched_predictions_val.csv`、`analysis/analysis_val.json`与`analysis/failure_cases/`。Test仅在一次正式最终评价完成后用相同结构、`test`后缀输出。已有预测CSV/分析JSON拒绝覆盖；原生输出不得因结果不理想而替换。
+正式运行目录为Git忽略的`IOR-YOLO/runs/e01_yolo11n_seg/seed_0/`。原生`weights/{best,last}.pt`、`args.yaml`、`results.csv`及`validation/`由固定Ultralytics产生；runner记录`run_manifest.yaml`、实际观测`resolved_train_config.yaml`及`metrics/`、`figures/`。预测导出写`predictions/predictions_val.csv`和逐实例归一化polygon JSON，字段为`image_id,pred_instance_id,pred_class,confidence,box,mask_reference,source_group_id,split_guard_cluster_id,split`。匹配后写入版本化目录`analysis/val_conf_0p65_v2/`（`matched_predictions_val.csv`、`analysis_val.json`、`failure_cases/`与`figures/`）；旧的无版本`analysis/analysis_val.json`保留为exploratory/superseded证据，不再被写入或覆盖，runner复制到`figures/`的正式图也不被分析写入。Test仅在一次正式最终评价完成后用相同结构、`test`后缀输出。已有预测CSV/分析JSON拒绝覆盖；原生输出不得因结果不理想而替换。
 
 未来用户在工作站先运行正式`train`，再运行`val`；随后执行：
 
@@ -13,13 +13,15 @@ python IOR-YOLO/scripts/18_export_e01_predictions.py --split val
 python IOR-YOLO/scripts/17_analyze_e01_results.py --split val
 ```
 
+Val如需其他工作点做敏感性分析可追加`--operating-confidence <v>`，输出进入对应版本化目录（如`val_conf_0p5_v2`），报告标记`analysis_classification=sensitivity_only_non_official`且`official_operating_point=false`，不得当作冻结工作点引用；Final Test必须沿用0.65，不加该参数。
+
 **Test lock**：训练和Val期间禁止正式Test。唯一最终Test必须由用户在模型与分析选择结束后调用`15_e01_run.py test --final-test`，命令打印`FINAL TEST EVALUATION`，此前须有Val结果。最终Test完成且manifest标记`final_test_completed`后，才能对其预测导出和只读分析分别追加`--split test --final-test`。不得以Test结果调整阈值、epoch、方法或重新选择模型。脚本的Test入口缺少显式flag均拒绝。
 
 ## 指标、匹配和分母
 
 从真实`results.csv`解析每epoch box与mask的Precision、Recall、mAP50、mAP50–95曲线；正式独立Val的完整汇总以及每类AP从run manifest读取。`results.csv`**最后epoch不是best checkpoint的最终Val分数**，不得混用。论文表格使用明确的独立Val/Test字段和best checkpoint对应结果；未运行记NA。类别顺序为immature=0、semi-mature=1、mature=2。
 
-预测导出使用固定`conf=0.001`和`iou=0.7`，不依据Test选择阈值。分析从冻结派生标签读取逐实例GT，按每张图**不区分类别**的box IoU≥0.5，以IoU降序、置信度及稳定ID处理并列，贪心一对一匹配；同一GT的重复预测只能一条匹配，其他为FP。配对后计算逐mask raster IoU，输出GT/预测类及box/mask IoU。这个匹配与Ultralytics官方mAP evaluator并非同一算法；独立误差分析数字不可冒称官方mAP。未配对GT是missed detection，未配对预测是false positive，**均不进入3×3类别混淆矩阵**。
+预测导出使用固定`conf=0.001`和`iou=0.7`，不依据Test选择阈值。operational误差分析（匹配、false positive/missed计数、类别混淆、失败样例选择）只使用confidence≥0.65的预测；0.65来自Validation F1曲线最优区（约0.652），在任何Test访问前冻结。该阈值不改变导出CSV、AP/PR曲线与正式Ultralytics Val/Test指标；Final Test必须复用0.65，禁止依据Test调阈值。`--operating-confidence`仅用于Val工作点敏感性分析，Test传入不同值直接拒绝；非0.65的Val分析在报告中标记`sensitivity_only_non_official`，仅为敏感性证据，不构成正式工作点。分析从冻结派生标签读取逐实例GT，按每张图**不区分类别**的box IoU≥0.5，以IoU降序、置信度及稳定ID处理并列，贪心一对一匹配；同一GT的重复预测只能一条匹配，其他为FP。配对后计算逐mask raster IoU，输出GT/预测类及box/mask IoU。这个匹配与Ultralytics官方mAP evaluator并非同一算法；独立误差分析数字不可冒称官方mAP。未配对GT是missed detection，未配对预测是false positive，**均不进入3×3类别混淆矩阵**。
 
 对已匹配实例计算`MASE_stage = mean(|pred_stage−gt_stage|)`、相邻错误比例`count(distance=1)/matched`、严重跨级比例`count(distance=2)/matched`、off-by-one准确率`count(distance≤1)/matched`。同时报告matched覆盖率、missed和FP数量；没有配对时阶段比例记null，不填零。这些只分析E01错误，不是ordinal方法或监督。
 
@@ -29,4 +31,4 @@ F1 Missed Fruit、F2 False Positive、F3 Adjacent Maturity Confusion、F4 Severe
 
 ## 可追溯性及约束
 
-每次分析核对Git commit和clean标志、run ID、训练seed、Ultralytics8.3.220、D2 ZIP来源与冻结pool/split/protocol SHA、E01 config、best checkpoint及实际resolved config SHA；报告另记录run manifest、真实训练CSV、预测CSV与分析脚本自身SHA。任何缺失/不一致均发出显式`E01 provenance`警告并在报告中保留`incomplete`，不可把该分析当已核验论文结论。Val/Test完整评估同原生mAP结果与逐实例分析分开保存；Mac合成测试只证明代码逻辑，不证明Kaggle正式运行时端到端运行。未来尤其核验U01未知polygon区域按普通背景FP计分的真实框架语义。
+每次分析核对Git commit和clean标志、run ID、训练seed、Ultralytics8.3.220、D2 ZIP来源与冻结pool/split/protocol SHA、E01 config、best checkpoint及实际resolved config SHA；D2原始来源同时接受已核验的unpacked directory（`raw_source_kind=unpacked_directory`且`raw_identity_status=VERIFIED`）：此时不要求本地ZIP存在，但manifest的`dataset_zip_sha256`、`files_sha256_manifest_sha256`必须与冻结protocol及`configs/data/d2_unpacked_identity.json`记录的expected source ZIP SHA256和文件哈希证据一致，缺失或不一致仍报`incomplete`。报告另记录run manifest、真实训练CSV、预测CSV与分析脚本自身SHA、analysis运行时的Git HEAD与operating threshold。任何缺失/不一致均发出显式`E01 provenance`警告并在报告中保留`incomplete`，不可把该分析当已核验论文结论。Val/Test完整评估同原生mAP结果与逐实例分析分开保存；Mac合成测试只证明代码逻辑，不证明Kaggle正式运行时端到端运行。未来尤其核验U01未知polygon区域按普通背景FP计分的真实框架语义。
