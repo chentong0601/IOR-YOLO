@@ -37,6 +37,16 @@ FORMAL_RUNNER_SCRIPT = ROOT / "scripts/15_e01_run.py"
 ENGINEERING_MARK = "ENGINEERING VALIDATION ONLY - NOT FOR PAPER"
 FORMAL_DEVICE = "cuda:0"
 
+# Engineering prediction-export thresholds. ultralytics 8.3.220 defaults
+# ``Model.predict`` to ``conf=0.25`` while its validator uses ``conf=0.001``;
+# relying on those library defaults made the engineering export silently drop
+# every low-confidence prediction of an under-trained engineering checkpoint
+# (empty ``predictions_val.json`` while validation metrics were non-zero).
+# The engineering export therefore pins the validation threshold explicitly and
+# records it, matching the engineering validation path and formal script 18.
+ENGINEERING_PREDICTION_CONF = 0.001
+ENGINEERING_PREDICTION_IOU = 0.7
+
 
 def load_script(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
@@ -419,14 +429,32 @@ def metrics_record(metric) -> dict:
     }
 
 
-def export_engineering_predictions(model, subset_root: Path, run_dir: Path, device: str, imgsz: int) -> dict:
+def export_engineering_predictions(
+    model,
+    subset_root: Path,
+    run_dir: Path,
+    device: str,
+    imgsz: int,
+    *,
+    conf: float,
+    iou: float,
+) -> dict:
+    """Export engineering Val predictions using explicitly pinned thresholds.
+
+    ``conf`` and ``iou`` are required keyword arguments so the export can never
+    fall back to an ``ultralytics`` library default, and the values actually
+    used are written to the run manifest and analysis report.
+    """
+    for label, value in (("conf", conf), ("iou", iou)):
+        if value is None or not 0 < float(value) <= 1:
+            raise ValueError(f"engineering prediction export requires an explicit {label} in (0, 1]")
     output = run_dir / "predictions"
     output.mkdir(exist_ok=False)
     source = subset_root / "images" / "val"
     expected = {path.name for path in source.glob("*.jpg")}
     predictions = []
     stream = model.predict(source=str(source), stream=True, device=device, imgsz=imgsz,
-                           save=False, verbose=False)
+                           conf=conf, iou=iou, save=False, verbose=False)
     seen = set()
     for result in stream:
         image_id = Path(result.path).name
@@ -457,7 +485,8 @@ def export_engineering_predictions(model, subset_root: Path, run_dir: Path, devi
         "images": sorted(seen),
         "predictions": predictions,
     }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-    return {"path": str(path), "images": len(seen), "predictions": len(predictions)}
+    return {"conf": float(conf), "iou": float(iou), "imgsz": int(imgsz),
+            "images": len(seen), "predictions": len(predictions), "path": str(path)}
 
 
 def engineering_analysis(run_dir: Path, metrics: dict, prediction_info: dict) -> dict:
@@ -615,7 +644,8 @@ def run_engineering(
         )
         validation = {"box": metrics_record(val_metrics.box), "mask": metrics_record(val_metrics.seg)}
         prediction_info = export_engineering_predictions(
-            val_model, subset_root, run_dir, device, settings["imgsz"])
+            val_model, subset_root, run_dir, device, settings["imgsz"],
+            conf=ENGINEERING_PREDICTION_CONF, iou=ENGINEERING_PREDICTION_IOU)
         analysis_report = engineering_analysis(run_dir, validation, prediction_info)
 
     git = git_provenance()

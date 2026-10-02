@@ -193,6 +193,76 @@ class E01LocalEngineeringTests(unittest.TestCase):
         # Builtin dict keys are preserved so namespace-style mappings still round-trip.
         self.assertEqual(local.yaml_safe({0: "immature apple"}), {0: "immature apple"})
 
+    def test_engineering_prediction_export_pins_validation_thresholds(self):
+        """Regression: the engineering export must not inherit predict's conf=0.25 default."""
+
+        class FakeModel:
+            """Records predict kwargs and yields empty results for every image."""
+
+            def __init__(self):
+                self.calls = []
+
+            def predict(self, **kwargs):
+                self.calls.append(kwargs)
+                source = Path(kwargs["source"])
+                return iter(SimpleNamespace(path=str(image), boxes=[], masks=None, orig_shape=(8, 8))
+                            for image in sorted(source.glob("*.jpg")))
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            val_images = root / "subset" / "images" / "val"
+            val_images.mkdir(parents=True)
+            for name in ("a.jpg", "b.jpg"):
+                Image.new("RGB", (8, 8)).save(val_images / name, format="JPEG")
+            for name in ("run", "rejected_conf", "rejected_iou"):
+                (root / name).mkdir()
+            model = FakeModel()
+            info = local.export_engineering_predictions(
+                model, root / "subset", root / "run", "cpu", 128,
+                conf=local.ENGINEERING_PREDICTION_CONF, iou=local.ENGINEERING_PREDICTION_IOU)
+            self.assertEqual({key: info[key] for key in ("conf", "iou", "imgsz", "images", "predictions")},
+                             {"conf": 0.001, "iou": 0.7, "imgsz": 128, "images": 2, "predictions": 0})
+            self.assertEqual(Path(info["path"]).name, "predictions_val.json")
+            self.assertTrue(Path(info["path"]).is_file())
+            # The thresholds must reach ultralytics predict itself, not be implied.
+            self.assertEqual(model.calls[0]["conf"], 0.001)
+            self.assertEqual(model.calls[0]["iou"], 0.7)
+            self.assertEqual(model.calls[0]["imgsz"], 128)
+            self.assertEqual(set(model.calls[0]), {"source", "stream", "device", "imgsz", "conf",
+                                                   "iou", "save", "verbose"})
+            with self.assertRaises(ValueError):
+                local.export_engineering_predictions(model, root / "subset", root / "rejected_conf", "cpu",
+                                                     128, conf=None, iou=0.7)
+            with self.assertRaises(ValueError):
+                local.export_engineering_predictions(model, root / "subset", root / "rejected_iou", "cpu",
+                                                     128, conf=0.001, iou=None)
+            self.assertEqual(len(model.calls), 1)
+
+    def test_engineering_prediction_export_declares_thresholds_explicitly(self):
+        """Thresholds must be explicit, recorded, and equal to the pinned val values."""
+        self.assertEqual(local.ENGINEERING_PREDICTION_CONF, 0.001)
+        self.assertEqual(local.ENGINEERING_PREDICTION_IOU, 0.7)
+        # ultralytics 8.3.220 Model.predict defaults to conf=0.25 (its validator uses
+        # 0.001), so the engineering export must stay below that library default.
+        self.assertLess(local.ENGINEERING_PREDICTION_CONF, 0.25)
+        parameters = inspect.signature(local.export_engineering_predictions).parameters
+        for name in ("conf", "iou"):
+            self.assertIs(parameters[name].default, inspect.Parameter.empty)
+            self.assertIs(parameters[name].kind, inspect.Parameter.KEYWORD_ONLY)
+        export_source = inspect.getsource(local.export_engineering_predictions)
+        self.assertIn("conf=conf", export_source)
+        self.assertIn("iou=iou", export_source)
+        self.assertNotIn("conf=0.25", export_source)
+        run_source = inspect.getsource(local.run_engineering)
+        self.assertIn("conf=ENGINEERING_PREDICTION_CONF", run_source)
+        self.assertIn("iou=ENGINEERING_PREDICTION_IOU", run_source)
+        self.assertIn('"prediction_export": prediction_info', run_source)
+        self.assertIn('"prediction_export": prediction_info',
+                      inspect.getsource(local.engineering_analysis))
+        formal = (ROOT / "scripts/18_export_e01_predictions.py").read_text(encoding="utf-8")
+        self.assertIn(f"conf={local.ENGINEERING_PREDICTION_CONF!r}", formal)
+        self.assertIn(f"iou={local.ENGINEERING_PREDICTION_IOU!r}", formal)
+
     def test_formal_run_manifest_writer_is_yaml_safe(self):
         class LibraryVersion(str):
             pass
