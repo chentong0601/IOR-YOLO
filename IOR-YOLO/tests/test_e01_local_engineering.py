@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import importlib.util
+import inspect
 import tempfile
 import unittest
 from pathlib import Path
@@ -145,6 +146,66 @@ class E01LocalEngineeringTests(unittest.TestCase):
                 self.assertEqual(len(subset_manifest["source_image_ids"]["train"]), 4)
                 self.assertEqual(len(subset_manifest["source_image_ids"]["val"]), 2)
         self.assertEqual(before, {path: file_hash(path) for path in frozen})
+
+
+    def test_run_manifest_serialization_accepts_library_version_strings(self):
+        """Regression: torch.__version__ is a TorchVersion str subclass yaml.safe_dump rejects."""
+
+        class LibraryVersion(str):
+            """Stands in for torch.torch_version.TorchVersion."""
+
+        manifest = {
+            "run_id": "local-smoke_regression", "mode": "local-smoke", "device": "cpu",
+            "environment": {"torch": LibraryVersion("2.14.1+cpu"), "cuda_available": False,
+                            "ultralytics": "8.3.220"},
+            "engineering_overrides": {"imgsz": 64, "epochs": 1, "batch": 1, "workers": 0,
+                                      "validation_during_training": False, "amp": False},
+            "source_image_ids": {"train": ["340.jpg"], "val": ["2280.jpg"]},
+            "validation": None, "prediction_export": None, "analysis": None,
+            "last_checkpoint_sha256": "a" * 64,
+        }
+        with self.assertRaises(yaml.representer.RepresenterError):
+            yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True)
+        with tempfile.TemporaryDirectory() as temp:
+            path = local.write_run_manifest(Path(temp), manifest)
+            written = yaml.safe_load(path.read_text(encoding="utf-8"))
+        expected = {**manifest, "environment": {"torch": "2.14.1+cpu", "cuda_available": False,
+                                                "ultralytics": "8.3.220"}}
+        self.assertEqual(written, expected)
+        self.assertIs(type(written["environment"]["torch"]), str)
+        source = inspect.getsource(local.run_engineering)
+        self.assertIn("write_run_manifest(run_dir, manifest)", source)
+        self.assertNotIn("yaml.safe_dump(manifest", source)
+
+    def test_yaml_safe_reduces_values_and_rejects_unknown_objects(self):
+        class LibraryVersion(str):
+            pass
+
+        safe = local.yaml_safe({"text": LibraryVersion("x"), "int": 1, "float": 1.5, "bool": True,
+                                "none": None, "tuple": (1, "a"), "nested": {"list": [LibraryVersion("y")]}})
+        self.assertEqual(safe, {"text": "x", "int": 1, "float": 1.5, "bool": True, "none": None,
+                                "tuple": [1, "a"], "nested": {"list": ["y"]}})
+        for key, expected_type in (("text", str), ("int", int), ("float", float), ("bool", bool)):
+            self.assertIs(type(safe[key]), expected_type)
+        for bad in (Path("run_manifest.yaml"), object(), {1, 2}):
+            with self.assertRaises(TypeError):
+                local.yaml_safe({"bad": bad})
+        # Builtin dict keys are preserved so namespace-style mappings still round-trip.
+        self.assertEqual(local.yaml_safe({0: "immature apple"}), {0: "immature apple"})
+
+    def test_formal_run_manifest_writer_is_yaml_safe(self):
+        class LibraryVersion(str):
+            pass
+
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp) / "seed_0"
+            run_dir.mkdir()
+            with patch.object(local.formal_runner, "RUN_DIR", run_dir):
+                local.formal_runner.write_manifest({"run_id": "e01_seed0_regression",
+                                                    "pytorch": LibraryVersion("2.14.1+cpu")})
+            written = yaml.safe_load((run_dir / "run_manifest.yaml").read_text(encoding="utf-8"))
+        self.assertEqual(written["pytorch"], "2.14.1+cpu")
+        self.assertIs(type(written["pytorch"]), str)
 
 
 if __name__ == "__main__":

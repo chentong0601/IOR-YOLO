@@ -213,9 +213,35 @@ def smoke(*, batch: int = 8, oom_note: str | None = None,
             "oom_note": oom_note, "pretrained_weight": weights}
 
 
+def yaml_safe(value):
+    """Reduce provenance values to YAML-safe Python builtins only.
+
+    ``yaml.safe_dump`` represents only exact ``str``/``int``/``float``/``bool``/
+    ``None``/``list``/``dict`` objects. ``environment.inspect()`` records
+    ``torch.__version__``, a ``torch.torch_version.TorchVersion`` (``str``
+    subclass), so ``write_manifest()`` would raise ``RepresenterError`` after
+    formal training instead of recording provenance. Unsupported objects fail
+    loudly rather than being stringified silently.
+    """
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return str(value)
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        return float(value)
+    if isinstance(value, dict):
+        return {yaml_safe(key): yaml_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [yaml_safe(item) for item in value]
+    raise TypeError(f"manifest value is not YAML-safe: {type(value).__module__}.{type(value).__name__}")
+
+
 def write_manifest(value: dict) -> None:
     path = RUN_DIR / "run_manifest.yaml"
-    path.write_text(yaml.safe_dump(value, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
+    path.write_text(yaml.safe_dump(yaml_safe(value), sort_keys=False, allow_unicode=True),
+                    encoding="utf-8", newline="\n")
 
 
 def read_manifest() -> dict:

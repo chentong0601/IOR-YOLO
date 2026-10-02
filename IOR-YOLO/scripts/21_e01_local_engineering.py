@@ -496,6 +496,39 @@ def engineering_analysis(run_dir: Path, metrics: dict, prediction_info: dict) ->
     return result
 
 
+def yaml_safe(value):
+    """Reduce provenance values to YAML-safe Python builtins only.
+
+    ``yaml.safe_dump`` represents only exact ``str``/``int``/``float``/``bool``/
+    ``None``/``list``/``dict`` objects. Libraries hand out scalar subclasses
+    instead: ``torch.__version__`` is a ``torch.torch_version.TorchVersion``
+    (``str`` subclass), so the safe dumper raises ``RepresenterError`` unless
+    the value is normalized first. Unsupported objects fail loudly rather than
+    being stringified silently.
+    """
+    if value is None or isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return str(value)
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        return float(value)
+    if isinstance(value, dict):
+        return {yaml_safe(key): yaml_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [yaml_safe(item) for item in value]
+    raise TypeError(f"manifest value is not YAML-safe: {type(value).__module__}.{type(value).__name__}")
+
+
+def write_run_manifest(run_dir: Path, manifest: dict) -> Path:
+    """Persist engineering provenance with YAML-safe builtins only."""
+    path = run_dir / "run_manifest.yaml"
+    path.write_text(yaml.safe_dump(yaml_safe(manifest), sort_keys=False, allow_unicode=True),
+                    encoding="utf-8", newline="\n")
+    return path
+
+
 def run_engineering(
     mode: str,
     *,
@@ -630,8 +663,7 @@ def run_engineering(
         "analysis": analysis_report,
         "interpretation": "engineering pipeline validation only; not for paper or scientific comparison",
     }
-    (run_dir / "run_manifest.yaml").write_text(
-        yaml.safe_dump(manifest, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
+    write_run_manifest(run_dir, manifest)
     return {"status": ENGINEERING_MARK, "mode": mode, "run_directory": str(run_dir),
             "validation": validation, "prediction_export": prediction_info,
             "analysis": str(run_dir / "analysis" / "engineering_validation.json") if analysis_report else None}
