@@ -1,12 +1,42 @@
-# Cross-platform provenance for frozen E01 scientific artifacts.
-# These files are pinned by exact SHA256 in IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml
-# and/or IOR-YOLO/configs/data/d2_frozen_protocol.yaml (frozen_csv_sha256 map), and re-verified
-# by IOR-YOLO/scripts/15_e01_run.py.load_config() and
-# IOR-YOLO/scripts/21_e01_local_engineering.py.verified_formal_config().
-# The system core.autocrlf=true would otherwise rewrite their bytes to CRLF on Windows checkouts
-# and break the validation even though the committed Git blobs are unchanged. Forcing LF here
-# keeps the worktree bytes byte-identical to the canonical Git blobs on every platform.
+# Cross-platform provenance for frozen D2/E01 scientific artifacts.
+#
+# The project pins exact SHA256 values for several artifacts, and its tooling
+# hashes raw file bytes (path.read_bytes() / digest_file()). Examples:
+#   - IOR-YOLO/configs/experiments/e01_yolo11n_seg.yaml pins the frozen pool,
+#     split and protocol SHAs; re-verified by 15_e01_run.py.load_config() and
+#     21_e01_local_engineering.py.verified_formal_config().
+#   - IOR-YOLO/configs/data/d2_frozen_protocol.yaml pins frozen_csv_sha256 and
+#     records generator_sha256 / supporting_generator_sha256 for the scripts
+#     that generated it, plus source_groups_sha256 / relations_sha256.
+#   - 16_resolve_e01_config.py records the requested config file SHA.
+#
+# Git blobs are LF. On Windows the system core.autocrlf=true rewrites text files
+# to CRLF at checkout, so the worktree bytes no longer match the frozen LF SHAs
+# even though the committed blobs are unchanged. That produces false
+# "frozen artifact changed" failures and breaks D2 rebuild determinism checks.
+# Forcing LF for every hashed path keeps worktree bytes byte-identical to the
+# canonical Git blobs on macOS, Linux and Windows.
+#
+# Scope: scripts + manifests + configs, i.e. the files that participate in the
+# provenance hash chain. Generated run outputs, images and weights are not
+# covered here (they are gitignored or binary).
+
+# Frozen artifacts referenced explicitly by the E01 loaders.
 IOR-YOLO/data/manifests/d2_experiment_pool_frozen.csv text eol=lf
 IOR-YOLO/data/manifests/d2_split_frozen.csv text eol=lf
 IOR-YOLO/data/manifests/d2_exclusions_frozen.csv text eol=lf
 IOR-YOLO/configs/data/d2_frozen_protocol.yaml text eol=lf
+
+# Scripts that are hashed (self-hash or supporting-generator hash).
+IOR-YOLO/scripts/*.py text eol=lf
+IOR-YOLO/scripts/**/*.py text eol=lf
+
+# Manifests whose raw bytes are hashed or compared byte-for-byte.
+IOR-YOLO/data/manifests/*.csv text eol=lf
+IOR-YOLO/data/manifests/**/*.csv text eol=lf
+
+# Config files whose raw bytes are hashed (resolved-config provenance).
+IOR-YOLO/configs/*.yaml text eol=lf
+IOR-YOLO/configs/**/*.yaml text eol=lf
+IOR-YOLO/configs/*.json text eol=lf
+IOR-YOLO/configs/**/*.json text eol=lf
