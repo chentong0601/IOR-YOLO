@@ -1,0 +1,11 @@
+# E02 ordinal-aware segmentation experiment (e02_yolo11n_seg_ordinal).
+# Every E01 pin is inherited unchanged: Ultralytics 8.3.220, torch/torchvision
+# and the dataset protocol stay exactly as frozen for E01.
+-r requirements-e01.txt
+
+# TensorBoard is a hard requirement for formal E02 training: the run directory
+# must carry box/seg/cls/dfl/ordinal losses, validation losses, box+mask metrics
+# and the optimization state (see docs/e02-ordinal-protocol.md). Installing it
+# only adds an optional Ultralytics integration and changes no E01 result; the
+# E02 trainer keeps a single canonical writer under <run_dir>/tensorboard.
+tensorboard>=2.14,<3

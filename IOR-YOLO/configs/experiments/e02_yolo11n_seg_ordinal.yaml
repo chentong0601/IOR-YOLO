@@ -1,0 +1,135 @@
+# E02: YOLO11n-seg + ordinal-aware auxiliary maturity loss.
+# Controlled minimal extension of the frozen E01 baseline: every training,
+# augmentation, dataset, split and execution value below is identical to
+# configs/experiments/e01_yolo11n_seg.yaml and is asserted byte-for-byte by
+# scripts/22_e02_ordinal_run.py before any preflight/train step.
+# Only the classification objective is extended (lambda_ord * L_ord).
+experiment_id: e02_yolo11n_seg_ordinal
+status: ready_to_run_not_executed
+task: segment
+model: yolo11n-seg.pt
+pretrained: true
+dataset_protocol_version: d2-v4-stage2b5-v1
+dataset_zip_sha256: 049591afd4fc3529aedbd31ef9119f5ec0601ebcb8cbbd4a25b7e883fde147ce
+experiment_pool_sha256: a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5
+dataset_split_sha256: 0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1
+protocol_yaml_sha256: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870
+execution_environment:
+  # Execution provenance is not a scientific treatment variable. Unchanged from E01.
+  formal_platform: Kaggle
+  formal_device: cuda:0
+  single_gpu_only: true
+  compatibility:
+    python: ">=3.11,<3.13"
+    cuda_required: true
+    ultralytics: "==8.3.220"
+    torch_torchvision: compatible CUDA-enabled pair; exact versions recorded at runtime
+  verified_kaggle_runtime:
+    python: "3.12.13"
+    python_executable: /usr/bin/python3
+    torch: "2.10.0+cu128"
+    torchvision: "0.25.0+cu128"
+    ultralytics: "8.3.220"
+    numpy: "2.0.2"
+    opencv_python: "4.13.0.92"
+    cuda_runtime: "12.8"
+    gpu: NVIDIA Tesla T4
+    visible_gpu_count: 2
+training_seed: 0  # Pinned Ultralytics default; unrelated to dataset split seed.
+split_seed_64: 13436313853456744620
+train:  # Identical to E01; parity is machine-checked, not assumed.
+  imgsz: 640
+  epochs: 100
+  batch: 8  # Frozen default; only a documented pretraining CUDA OOM permits fallback to 4.
+  optimizer: auto  # Ultralytics 8.3.220 default; chooses actual optimizer/LR at trainer setup.
+  lr0: 0.01  # Requested package default; ignored when optimizer=auto. Capture effective optimizer LR.
+  lrf: 0.01
+  weight_decay: 0.0005
+  cos_lr: false
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1  # Package default; auto mutates effective value to 0.0.
+  momentum: 0.937  # Package default; ignored when optimizer=auto.
+  patience: 100
+  workers: 4
+  seed: 0
+  deterministic: true
+  amp: true
+  cache: false
+  close_mosaic: 10
+  plots: true
+  save: true
+  val: true
+  augmentation:
+    hsv_h: 0.015
+    hsv_s: 0.7
+    hsv_v: 0.4
+    degrees: 0.0
+    translate: 0.1
+    scale: 0.5
+    shear: 0.0
+    perspective: 0.0
+    flipud: 0.0
+    fliplr: 0.5
+    mosaic: 1.0
+    mixup: 0.0
+    copy_paste: 0.0
+    copy_paste_mode: flip
+ordinal:
+  encoding: [0, 1, 2]  # ascending maturity: 0 immature < 1 semi-mature < 2 mature
+  class_order: ["immature apple", "semi-mature apple", "mature apple"]
+  semantics: ascending_maturity
+  loss: cumulative_distribution_squared_error
+  cumulative_targets:  # F_y(j) = 1[j >= y], j = 0, 1
+    immature: [1.0, 1.0]
+    semi-mature: [0.0, 1.0]
+    mature: [0.0, 0.0]
+  num_stages: 3
+  lambda_ord: 0.5  # Fixed for round 1. Never tuned, never selected on val or test.
+  lambda_selection: predeclared_before_training
+  normalization: target_scores_sum (identical denominator to the original cls loss)
+  injection_point: ior_yolo/trainers/ordinal.py::OrdinalSegmentationLoss.__call__
+  original_objective: >
+    ultralytics 8.3.220 v8SegmentationLoss: per-anchor BCEWithLogitsLoss against
+    task-aligned assigner targets, summed and divided by target_scores_sum,
+    scaled by hyp.cls; detection box/dfl and segmentation mask terms unchanged.
+  preservation: original classification loss is retained unchanged alongside the auxiliary term
+tensorboard:
+  logdir_relative: tensorboard  # inside the E02 run directory; E01 is never written to
+  writer: torch.utils.tensorboard.SummaryWriter
+  required_runtime: "tensorboard>=2.14,<3 (see requirements-e02.txt)"
+  log_batch_scalars: true
+  neutralize_builtin_ultralytics_integration: true
+run:
+  runs_root_env: E02_RUNS_ROOT
+  default_runs_root: runs
+  run_directory: e02_yolo11n_seg_ordinal/seed_0
+  preflight_directory: e02_yolo11n_seg_ordinal/preflight
+  final_test: locked_inherited_from_e01  # E02 entrypoint exposes no test command at all
+e01_reference:  # Read-only frozen baseline; E02 asserts these digests before running.
+  training_commit: 71357153fb19a7630e69d9fc9cbb243e5d2cd22d
+  analysis_commit: c22134cd8e39619729b514f4419ab271c06bf4c0
+  frozen_results:
+    box_mAP50: 0.973512
+    box_mAP50_95: 0.945334
+    mask_mAP50: 0.973512
+    mask_mAP50_95: 0.941337
+    operational_confidence: 0.65
+    gt_instances: 323
+    matched: 314
+    missed: 9
+    false_positives: 9
+    gt_coverage_percent: 97.21
+    maturity_percent: {immature: 95.68, semi-mature: 83.33, mature: 97.39}
+    maturity_errors: {correct: 295, adjacent: 19, severe: 0}
+    mase: 0.0605
+  files_sha256:
+    configs/experiments/e01_yolo11n_seg.yaml: 635d414d95204945fa73ee5fe0c866395f349bd297b1f75a1d52f9538a6cdafc
+    configs/experiments/run_manifest_template.yaml: 2e622263247d66cf0ee8b22be1459624f4dcd6833b298c5cb9a40f78f379f3b0
+    configs/data/d2_frozen_protocol.yaml: 09db366f059ac933a68a05ec2c8de40a4df1600b859819ca1507d3cf4d719870
+    data/manifests/d2_experiment_pool_frozen.csv: a4c95aca830b514876495a7cdd36e735861758982b3e1529d6b45006b3092aa5
+    data/manifests/d2_split_frozen.csv: 0ad786432a368badce89acf033813bd7b1e47e27770a03f70fd96dc869eebfd1
+    scripts/15_e01_run.py: 9687495f629835d611072b3c26a7231487ffc4557e4e72584ef825b805d92d07
+    scripts/16_resolve_e01_config.py: 3ccf47e649d147b9d0762ad132d5d433c601909d82da8aa31e56ebadd6b5a02f
+    scripts/17_analyze_e01_results.py: 2c42b83b7e428ee71d4634ac0602e6d819ffd95249dc818f573b71b5d3f79be9
+    scripts/18_export_e01_predictions.py: cba8d8baef525505620504a52675b0f17bce7d1a8b000be4d890f9cf1641bd21
